@@ -9,9 +9,9 @@ class TextNormalizer:
             text
         )
 
-        # Replace separators with spaces
+        # Replace punctuation / separators with spaces
         text = re.sub(
-            r"[_\-/\.\s]+",
+            r"[^a-zA-Z0-9]+",
             " ",
             text
         )
