@@ -272,6 +272,32 @@ class RepositoryGraph:
 
         The distance is important because the ranking layer can
         reduce the importance of distant structural evidence.
+
+        Two separate bookkeeping sets are used:
+
+            expanded    which nodes have already been walked.
+                        This bounds the traversal and breaks
+                        cycles.
+
+            emitted     which (target, relationship) pairs have
+                        already been reported.
+
+        They must stay separate. A node is reached once, but it
+        can be reached by several DIFFERENT relationship types,
+        for example:
+
+            car_repository_impl --imports----> car_repository
+            car_repository_impl --implements-> car_repository
+
+        Collapsing those into a single node visit would throw
+        away the strongest edge whenever a weaker edge happened
+        to be discovered first, and the ranking layer would never
+        see implements / extends / mixes_in for a file that is
+        also imported.
+
+        Because the traversal is breadth-first, the first time a
+        (target, relationship) pair is emitted is also its
+        shortest distance.
         """
 
         if not file_paths:
@@ -282,7 +308,15 @@ class RepositoryGraph:
 
         results = []
 
-        visited = set(
+        seeds = set(
+            file_paths
+        )
+
+        # Seed files already carry direct evidence. Structural
+        # score is for files that retrieval did NOT already find.
+        emitted = set()
+
+        expanded = set(
             file_paths
         )
 
@@ -297,71 +331,70 @@ class RepositoryGraph:
 
             next_files = set()
 
+            # ---------------------------------------------
+            # Forward relationships, plus optionally the
+            # reverse ones.
+            #
+            # Both directions are reported the same way:
+            # "target" is always the newly discovered file.
+            # ---------------------------------------------
+
             for current_file in current:
 
-                # ---------------------------------------------
-                # Forward relationships
-                # ---------------------------------------------
+                discovered = [
+                    (
+                        relationship["target"],
+                        relationship["relationship"]
+                    )
+                    for relationship in self.get_relationships(
+                        current_file
+                    )
+                ]
 
-                relationships = self.get_relationships(
-                    current_file
-                )
+                if include_reverse:
 
-                for relationship in relationships:
+                    discovered.extend(
+                        (
+                            relationship["source"],
+                            relationship["relationship"]
+                        )
+                        for relationship in (
+                            self.get_reverse_relationships(
+                                current_file
+                            )
+                        )
+                    )
 
-                    target = relationship["target"]
+                for target, relationship_type in discovered:
 
-                    if target in visited:
+                    if target not in seeds:
+
+                        edge = (
+                            target,
+                            relationship_type
+                        )
+
+                        if edge not in emitted:
+
+                            emitted.add(edge)
+
+                            results.append({
+                                "source": current_file,
+                                "target": target,
+                                "relationship": relationship_type,
+                                "distance": depth
+                            })
+
+                    # Walk each node once, however many edge
+                    # types led to it.
+                    if target in expanded:
                         continue
 
-                    visited.add(target)
+                    expanded.add(target)
 
                     next_files.add(
                         target
                     )
-
-                    results.append({
-                        "source": current_file,
-                        "target": target,
-                        "relationship": relationship[
-                            "relationship"
-                        ],
-                        "distance": depth
-                    })
-
-                # ---------------------------------------------
-                # Optional reverse relationships
-                # ---------------------------------------------
-
-                if include_reverse:
-
-                    reverse_relationships = (
-                        self.get_reverse_relationships(
-                            current_file
-                        )
-                    )
-
-                    for relationship in reverse_relationships:
-
-                        source = relationship["source"]
-
-                        if source in visited:
-                            continue
-
-                        visited.add(source)
-
-                        next_files.add(
-                            source
-                        )
-
-                        results.append({
-                            "source": current_file,
-                            "target": source,
-                            "relationship": relationship[
-                                "relationship"
-                            ],
-                            "distance": depth
-                        })
 
             current = next_files
 

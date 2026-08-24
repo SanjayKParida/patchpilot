@@ -54,6 +54,23 @@ class RepositoryEvidenceService:
             ]
         """
 
+        # A language pack may offer a repository-wide entry point when
+        # some of its evidence needs cross-file knowledge, such as
+        # resolving a type reference to the file that declares it.
+        # Prefer it; fall back to per-file analysis for packs that
+        # only implement that.
+        analyze_repository = getattr(
+            self.evidence_analyzer,
+            "analyze_repository",
+            None
+        )
+
+        if callable(analyze_repository):
+            return analyze_repository(
+                files,
+                signals
+            )
+
         evidence = []
 
         for file in files:

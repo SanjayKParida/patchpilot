@@ -12,6 +12,205 @@ from app.utils.dart.dart_structure_analyzer import DartStructureAnalyzer
 from app.utils.dart.dart_evidence_analyzer import DartEvidenceAnalyzer
 from app.utils.repository_graph import RepositoryGraph
 
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def print_candidate_diagnostics(
+    sorted_scores,
+    files,
+    direct_evidence,
+    structural_results,
+    top_n=5
+):
+    """
+    Print a compact explanation of why the highest-ranked files
+    were considered relevant.
+
+    This is diagnostic only.
+    It does NOT affect ranking.
+    """
+
+    files_by_path = {
+        file["path"]: file
+        for file in files
+    }
+
+    direct_by_file = {}
+
+    for evidence in direct_evidence:
+
+        file = evidence.get("file")
+
+        if not file:
+            continue
+
+        path = file.get("path")
+
+        if not path:
+            continue
+
+        direct_by_file.setdefault(
+            path,
+            []
+        ).append(evidence)
+
+    structural_by_target = {}
+
+    for relationship in structural_results:
+
+        target = relationship.get("target")
+
+        if not target:
+            continue
+
+        structural_by_target.setdefault(
+            target,
+            []
+        ).append(relationship)
+
+    print(
+        "\n============ "
+        "TOP CANDIDATE DIAGNOSTICS "
+        "============"
+    )
+
+    for rank, (sha, score) in enumerate(
+        sorted_scores[:top_n],
+        start=1
+    ):
+
+        path = score["path"]
+
+        print(
+            f"\n{rank}. {path}"
+        )
+
+        print(
+            f"   Score: "
+            f"{score['total_score']:.3f}"
+        )
+
+        # Confidences accumulate once per matched signal; show the
+        # mean so the channels stay comparable between files.
+        matched = max(
+            score.get("signals_matched", 0),
+            1
+        )
+
+        print(
+            f"   Direct: "
+            f"{score['direct_score']:.3f} | "
+            f"Structural: "
+            f"{score.get('structural_score', 0):.3f} | "
+            f"signals={score.get('signals_matched', 0)}"
+        )
+
+        print(
+            f"   Mean confidence — "
+            f"evidence={score['evidence_confidence'] / matched:.2f} "
+            f"content={score['content_confidence'] / matched:.2f} "
+            f"path={score['path_confidence'] / matched:.2f}"
+        )
+
+        # ----------------------------------------------------
+        # Direct evidence
+        # ----------------------------------------------------
+
+        evidence = direct_by_file.get(
+            path,
+            []
+        )
+
+        if evidence:
+
+            print(
+                "   Direct evidence:"
+            )
+
+            # Strongest evidence first.
+            strongest = sorted(
+                evidence,
+                key=lambda item: item.get(
+                    "strength",
+                    0
+                ),
+                reverse=True
+            )[:6]
+
+            for item in strongest:
+
+                print(
+                    f"     - "
+                    f"{item['concept']} → "
+                    f"{item['evidence_type']} "
+                    f"'{item['identifier']}' "
+                    f"(strength={item['strength']}, "
+                    f"line={item['line']})"
+                )
+
+        else:
+
+            print(
+                "   Direct evidence: none"
+            )
+
+        # ----------------------------------------------------
+        # Structural evidence
+        # ----------------------------------------------------
+
+        relationships = (
+            structural_by_target.get(
+                path,
+                []
+            )
+        )
+
+        if relationships:
+
+            print(
+                "   Structural evidence:"
+            )
+
+            # Only show the closest / strongest
+            # structural relationships.
+            relationships = sorted(
+                relationships,
+                key=lambda item: item.get(
+                    "distance",
+                    999
+                )
+            )[:5]
+
+            for relationship in relationships:
+
+                print(
+                    f"     - "
+                    f"{relationship['relationship']} "
+                    f"from "
+                    f"{relationship['source']} "
+                    f"(distance="
+                    f"{relationship['distance']})"
+                )
+
+        else:
+
+            print(
+                "   Structural evidence: none"
+            )
+
+        # ----------------------------------------------------
+        # File existence sanity check
+        # ----------------------------------------------------
+
+        if path not in files_by_path:
+
+            print(
+                "   WARNING: file not found "
+                "in repository file set"
+            )
+
 def _convert_structural_results(
     structural_results,
     files
@@ -48,6 +247,13 @@ def _convert_structural_results(
         })
 
     return converted
+
+
+def _print_section(title):
+    print(
+        f"\n{'=' * 12} {title} {'=' * 12}"
+    )
+
 
 # ============================================================
 # SETUP
@@ -90,13 +296,12 @@ ranking_service = RepositoryRankingService()
 user = github.authenticate()
 
 print(
-    "Authenticated as:",
-    user["login"]
+    f"Authenticated as: {user['login']}"
 )
 
 
 # ============================================================
-# GET REPOSITORY FILES
+# GET REPOSITORY
 # ============================================================
 
 files = github.get_repository_source_files(
@@ -105,12 +310,16 @@ files = github.get_repository_source_files(
 )
 
 print(
-    f"Total files: {len(files)}"
+    f"Repository: {owner}/{repo}"
+)
+
+print(
+    f"Source files: {len(files)}"
 )
 
 
 # ============================================================
-# BUILD REPOSITORY RELATIONSHIPS
+# BUILD STRUCTURAL GRAPH
 # ============================================================
 
 relationships = (
@@ -119,28 +328,13 @@ relationships = (
     )
 )
 
-print(
-    "\n========== IMPLEMENTATION / "
-    "STRUCTURAL RELATIONSHIPS =========="
-)
-
-for relationship in relationships:
-
-    print(
-        relationship["source"],
-        "--",
-        relationship["relationship"],
-        "-->",
-        relationship["target"]
-    )
-
-
-# ============================================================
-# BUILD GRAPH
-# ============================================================
-
 graph = RepositoryGraph(
     relationships
+)
+
+print(
+    f"Structural relationships: "
+    f"{len(relationships)}"
 )
 
 
@@ -171,23 +365,19 @@ if not issues:
 issue = issues[0]
 
 
-print(
-    "\n========== ISSUE =========="
-)
+# ============================================================
+# ISSUE
+# ============================================================
+
+_print_section("ISSUE")
 
 print(
-    "TITLE:",
     issue["title"]
-)
-
-print(
-    "BODY:",
-    issue["body"]
 )
 
 
 # ============================================================
-# EXTRACT ISSUE SIGNALS
+# SIGNALS
 # ============================================================
 
 signals = signal_service.extract_signals(
@@ -195,30 +385,19 @@ signals = signal_service.extract_signals(
     issue["body"]
 )
 
-
-print(
-    "\n========== SIGNALS =========="
-)
+_print_section("SIGNALS")
 
 for signal in signals:
 
     print(
-        signal["term"],
-        "(",
-        signal["type"],
-        ")"
+        f"- {signal['term']} "
+        f"[{signal['type']}]"
     )
 
 
 # ============================================================
-# DIRECT + STRUCTURAL EVIDENCE
+# DIRECT EVIDENCE
 # ============================================================
-
-print(
-    "\n========== "
-    "DIRECT CODE EVIDENCE "
-    "=========="
-)
 
 direct_evidence = (
     evidence_service.analyze_files(
@@ -227,23 +406,15 @@ direct_evidence = (
     )
 )
 
-for item in direct_evidence:
-
-    print(
-        f"{item['file']['path']} "
-        f"| {item['evidence_type']} "
-        f"| concept={item['concept']} "
-        f"| strength={item['strength']} "
-        f"| line={item['line']} "
-        f"| identifier={item['identifier']}"
+# Path, content and structural retrieval all drop test files.
+# Evidence must use the same filter or tests re-enter the ranking.
+direct_evidence = [
+    item
+    for item in direct_evidence
+    if search.is_candidate_file(
+        item["file"]
     )
-
-
-print(
-    "\n========== "
-    "DIRECT EVIDENCE SUMMARY "
-    "=========="
-)
+]
 
 direct_by_file = (
     evidence_service.group_direct_evidence(
@@ -251,83 +422,64 @@ direct_by_file = (
     )
 )
 
-for path, evidence in direct_by_file.items():
+_print_section("DIRECT EVIDENCE")
+
+print(
+    f"Evidence records: {len(direct_evidence)}"
+)
+
+print(
+    f"Files with evidence: {len(direct_by_file)}"
+)
+
+# Only print files that actually contain evidence.
+for path, evidence in sorted(
+    direct_by_file.items()
+):
 
     print(
         f"\n{path}"
     )
 
-    for item in evidence:
+    # Show only the strongest few pieces of evidence.
+    strongest = sorted(
+        evidence,
+        key=lambda item: item.get(
+            "strength",
+            0
+        ),
+        reverse=True
+    )[:5]
+
+    for item in strongest:
 
         print(
-            f"  -> {item['evidence_type']} "
-            f"| {item['concept']} "
-            f"| strength={item['strength']} "
-            f"| line={item['line']} "
-            f"| {item['identifier']}"
+            f"  - {item['evidence_type']} "
+            f"{item['identifier']} "
+            f"(concept={item['concept']}, "
+            f"strength={item['strength']}, "
+            f"line={item['line']})"
         )
 
 
 # ============================================================
-# RETRIEVAL
+# RETRIEVAL + RANKING
 # ============================================================
-
-print(
-    "\n========== "
-    "RETRIEVAL "
-    "=========="
-)
-
 
 rankings = []
 
+all_seed_paths = set()
+
+all_structural_results = []
 
 for signal in signals:
 
     term = signal["term"]
-    signal_type = signal["type"]
-
-    print(
-        f"\n--- {term} ({signal_type}) ---"
-    )
-
-    # --------------------------------------------------------
-    # PATH SEARCH
-    # --------------------------------------------------------
 
     path_results = search.search(
         files,
         term
     )
-
-    path_seed_paths = {
-        file["path"]
-        for file in path_results
-    }
-
-    print(
-        "\nPath matches:"
-    )
-
-    if path_seed_paths:
-
-        for path in sorted(
-            path_seed_paths
-        ):
-            print(
-                "  ->",
-                path
-            )
-
-    else:
-
-        print(
-            "  None"
-        )
-
-    # --------------------------------------------------------
-    # CONTENT SEARCH
-    # --------------------------------------------------------
 
     content_results = (
         search.search_content(
@@ -336,63 +488,36 @@ for signal in signals:
         )
     )
 
+    path_seed_paths = {
+        file["path"]
+        for file in path_results
+    }
+
     content_seed_paths = {
         result["file"]["path"]
         for result in content_results
     }
-
-    print(
-        "\nContent matches:"
-    )
-
-    if content_seed_paths:
-
-        for path in sorted(
-            content_seed_paths
-        ):
-            print(
-                "  ->",
-                path
-            )
-
-    else:
-
-        print(
-            "  None"
-        )
-
-    # --------------------------------------------------------
-    # COMBINE RETRIEVAL SEEDS
-    # --------------------------------------------------------
 
     seed_paths = (
         path_seed_paths |
         content_seed_paths
     )
 
-    print(
-        "\nCombined seed files:"
+    all_seed_paths.update(
+        seed_paths
     )
 
-    if seed_paths:
-
-        for path in sorted(
-            seed_paths
-        ):
-            print(
-                "  ->",
-                path
-            )
-
-    else:
-
-        print(
-            "  None"
-        )
-
     # --------------------------------------------------------
-    # STRUCTURAL EXPANSION
+    # Filter production candidates
     # --------------------------------------------------------
+
+    seed_paths = {
+        path
+        for path in seed_paths
+        if search.is_candidate_file({
+            "path": path
+        })
+    }
 
     structural_results = (
         evidence_service.expand_candidates(
@@ -402,62 +527,17 @@ for signal in signals:
         )
     )
 
-    structural_paths = {
-        result["target"]
+    structural_results = [
+        result
         for result in structural_results
-    }
+        if search.is_candidate_file({
+            "path": result["target"]
+        })
+    ]
 
-    structural_paths -= seed_paths
-
-    print(
-        "\nStructural candidates:"
+    all_structural_results.extend(
+        structural_results
     )
-
-    if structural_paths:
-
-        for path in sorted(
-            structural_paths
-        ):
-            print(
-                "  ->",
-                path
-            )
-
-    else:
-
-        print(
-            "  None"
-        )
-
-    # --------------------------------------------------------
-    # STRUCTURAL EVIDENCE
-    # --------------------------------------------------------
-
-    print(
-        "\nStructural evidence:"
-    )
-
-    if structural_results:
-
-        for result in structural_results:
-
-            print(
-                f"  -> "
-                f"{result['source']} "
-                f"-- {result['relationship']} --> "
-                f"{result['target']} "
-                f"| distance={result['distance']}"
-            )
-
-    else:
-
-        print(
-            "  None"
-        )
-
-    # --------------------------------------------------------
-    # RANK THIS SIGNAL
-    # --------------------------------------------------------
 
     ranking = ranking_service.rank(
         signal=signal,
@@ -466,7 +546,8 @@ for signal in signals:
         structural_results=_convert_structural_results(
             structural_results,
             files
-        )
+        ),
+        direct_evidence=direct_evidence
     )
 
     rankings.append(
@@ -475,7 +556,55 @@ for signal in signals:
 
 
 # ============================================================
-# AGGREGATE RANKINGS
+# RETRIEVAL SUMMARY
+# ============================================================
+
+structural_paths = {
+    result["target"]
+    for result in all_structural_results
+}
+
+structural_paths -= all_seed_paths
+
+_print_section("RETRIEVAL SUMMARY")
+
+print(
+    f"Direct seed files: "
+    f"{len(all_seed_paths)}"
+)
+
+print(
+    f"Structural candidates: "
+    f"{len(structural_paths)}"
+)
+
+if all_seed_paths:
+
+    print("\nSeed files:")
+
+    for path in sorted(
+        all_seed_paths
+    ):
+
+        print(
+            f"  - {path}"
+        )
+
+if structural_paths:
+
+    print("\nStructural candidates:")
+
+    for path in sorted(
+        structural_paths
+    ):
+
+        print(
+            f"  - {path}"
+        )
+
+
+# ============================================================
+# AGGREGATE RANKING
 # ============================================================
 
 final_scores = (
@@ -489,97 +618,130 @@ final_scores = (
 # FINAL RANKING
 # ============================================================
 
-print(
-    "\n========== "
-    "FINAL RANKING "
-    "=========="
-)
-
 sorted_scores = sorted(
     final_scores.items(),
     key=lambda item: item[1]["total_score"],
     reverse=True
 )
 
+_print_section("FINAL RANKING")
 
 for index, (
     sha,
     score
 ) in enumerate(
-    sorted_scores,
+    sorted_scores[:10],
     start=1
 ):
 
     print(
-        f"\n{index}. {score['path']}"
+        f"{index}. {score['path']}"
     )
 
-    print(
-        f"   path_score="
-        f"{score['path_score']:.3f}"
-    )
+    matched = score.get("signals_matched", 0)
 
     print(
-        f"   content_score="
-        f"{score['content_score']:.3f}"
-    )
-
-    print(
-        f"   structural_score="
-        f"{score.get('structural_score', 0):.3f}"
-    )
-
-    print(
-        f"   total_score="
-        f"{score['total_score']:.3f}"
+        f"   total={score['total_score']:.3f} "
+        f"(direct={score['direct_score']:.3f}, "
+        f"structural={score.get('structural_score', 0):.3f}) "
+        f"signals={matched}"
     )
 
 
 # ============================================================
-# DEPENDENCY TEST
+# TOP CANDIDATE DIAGNOSTICS
 # ============================================================
 
-print(
-    "\n========== "
-    "DEPENDENCY TEST "
-    "=========="
+print_candidate_diagnostics(
+    sorted_scores,
+    files,
+    direct_evidence,
+    all_structural_results
 )
 
-target = (
-    "lib/presentation/bloc/car_bloc.dart"
-)
 
-print(
-    "Target:",
-    target
-)
+# ============================================================
+# TOP CANDIDATE DEPENDENCIES
+# ============================================================
 
-for depth in [1, 2, 3]:
+_print_section("TOP CANDIDATE DEPENDENCIES")
+
+if sorted_scores:
+
+    top_sha, top_score = (
+        sorted_scores[0]
+    )
+
+    top_path = top_score["path"]
 
     print(
-        f"\nDepth {depth}:"
+        f"Top candidate: {top_path}"
     )
 
     dependencies = (
         graph.get_dependencies(
-            target,
-            max_depth=depth
+            top_path,
+            max_depth=3
         )
     )
 
-    if not dependencies:
+    if dependencies:
 
-        print(
-            "-> None"
-        )
-
-    else:
-
-        for dependency, distance in (
-            dependencies.items()
+        for dependency, distance in sorted(
+            dependencies.items(),
+            key=lambda item: item[1]
         ):
 
             print(
-                f"-> {dependency} "
-                f"| distance: {distance}"
+                f"  -> {dependency} "
+                f"[distance={distance}]"
             )
+
+    else:
+
+        print(
+            "  No dependencies found."
+        )
+
+
+# ============================================================
+# EVIDENCE SUMMARY
+# ============================================================
+
+_print_section("EVIDENCE SUMMARY")
+
+combined_evidence = {
+    "direct": direct_evidence,
+    "structural": all_structural_results
+}
+
+summary = evidence_service.summarize(
+    combined_evidence
+)
+
+print(
+    f"Direct evidence records: "
+    f"{summary['direct_evidence_count']}"
+)
+
+print(
+    f"Files with direct evidence: "
+    f"{summary['direct_file_count']}"
+)
+
+print(
+    f"Structural evidence records: "
+    f"{summary['structural_evidence_count']}"
+)
+
+print(
+    f"Structural candidate files: "
+    f"{summary['structural_file_count']}"
+)
+
+
+# ============================================================
+# END
+# ============================================================
+
+_print_section("DONE")
