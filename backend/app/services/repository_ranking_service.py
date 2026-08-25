@@ -422,12 +422,6 @@ class RepositoryRankingService:
             1
         )
 
-        print(
-            f"\n[RANKING] signal={signal_term} "
-            f"type={signal_type} "
-            f"weight={signal_weight}"
-        )
-
         # =====================================================
         # COLLECT PER-CHANNEL OBSERVATIONS
         # =====================================================
@@ -579,15 +573,6 @@ class RepositoryRankingService:
             for channel, confidence in confidences.items():
                 score[f"{channel}_confidence"] += confidence
 
-            print(
-                f"  [DIRECT] {file['path']} "
-                f"e={confidences['evidence']:.2f} "
-                f"c={confidences['content']:.2f} "
-                f"p={confidences['path']:.2f} "
-                f"-> combined={combined:.3f} "
-                f"contribution={direct_score:.2f}"
-            )
-
         # =====================================================
         # STRUCTURAL SCORING
         # =====================================================
@@ -708,15 +693,6 @@ class RepositoryRankingService:
                     edge_contribution
                 )
 
-                print(
-                    f"  [STRUCTURAL] {file['path']} "
-                    f"relationship={relationship} "
-                    f"best_distance_factor="
-                    f"{distance_factor:.3f} "
-                    f"edge_contribution="
-                    f"{edge_contribution:.2f}"
-                )
-
             # -------------------------------------------------
             # Apply:
             #
@@ -740,13 +716,6 @@ class RepositoryRankingService:
             scores[sha]["structural_score"] += (
                 structural_score
             )
-
-            print(
-                f"  [STRUCTURAL] {file['path']} "
-                f"total_contribution="
-                f"{structural_score:.2f}"
-            )
-
 
         return scores
 

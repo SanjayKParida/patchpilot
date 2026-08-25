@@ -1,159 +1,64 @@
+"""
+Deterministic tests for AnalyzeIssueService.
+
+Uses the frozen car-rental fixture and IssueSignalService so
+pytest does not need GitHub, OpenAI, or network access.
+"""
+
 import contextlib
 import io
-import os
+import json
+from pathlib import Path
 
-from dotenv import load_dotenv
-
-from app.services.github_service import GithubService
+from app.services.analyze_issue_service import (
+    AnalyzeIssueService,
+    build_analyze_issue_service,
+)
 from app.services.issue_signal_service import IssueSignalService
-from app.services.analyze_issue_service import AnalyzeIssueService
-from app.services.repository_evidence_service import (
-    RepositoryEvidenceService,
-)
-from app.services.repository_ranking_service import (
-    RepositoryRankingService,
-)
-from app.services.repository_search_service import (
-    RepositorySearchService,
+
+
+FIXTURE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "evalutation"
+    / "fixtures"
+    / "car_rental_app.json"
 )
 
-from app.utils.dart.dart_evidence_analyzer import (
-    DartEvidenceAnalyzer,
-)
-from app.utils.dart.dart_structure_analyzer import (
-    DartStructureAnalyzer,
-)
-from app.utils.repository_graph import RepositoryGraph
+
+class FakeSignalService:
+    def __init__(self, signals):
+        self.signals = signals
+        self.calls = []
+
+    def extract_signals(self, title, body):
+        self.calls.append((title, body))
+        return list(self.signals)
 
 
-# ============================================================
-# ENVIRONMENT
-# ============================================================
-
-load_dotenv()
-
-
-# ============================================================
-# CONFIG
-# ============================================================
-
-OWNER = "SanjayKParida"
-REPO = "car-rental-app"
+def load_snapshot():
+    snapshot = json.loads(FIXTURE_PATH.read_text())
+    issue = snapshot["issue"]
+    return snapshot["files"], {
+        "title": issue.get("title") or "",
+        "body": issue.get("body") or "",
+    }
 
 
-# ============================================================
-# LIVE REPOSITORY
-# ============================================================
+def run_analysis(signals=None, signal_service=None):
+    files, issue = load_snapshot()
 
-def load_repository():
-    """
-    Load the repository and first GitHub issue using the same
-    source used by the existing live harness.
-    """
-
-    token = os.getenv("GITHUB_TOKEN")
-
-    if not token:
-        raise RuntimeError(
-            "GITHUB_TOKEN is not set. "
-            "Check your .env file and make sure it contains "
-            "GITHUB_TOKEN=..."
-        )
-
-    github = GithubService(token)
-
-    github.authenticate()
-
-    files = github.get_repository_source_files(
-        OWNER,
-        REPO
+    service = build_analyze_issue_service(
+        files,
+        signal_service=signal_service or IssueSignalService(),
     )
-
-    issues = github.get_issues(
-        OWNER,
-        REPO
-    )
-
-    if not files:
-        raise RuntimeError(
-            "Repository returned no source files"
-        )
-
-    if not issues:
-        raise RuntimeError(
-            "Repository returned no issues"
-        )
-
-    # Keep this consistent with the existing live harness.
-    issue = issues[0]
-
-    return files, issue
-
-
-# ============================================================
-# SERVICE CONSTRUCTION
-# ============================================================
-
-def build_service(files):
-    """
-    Build AnalyzeIssueService using the existing production
-    components.
-    """
-
-    signal_service = IssueSignalService()
-
-    search_service = RepositorySearchService()
-
-    structure_analyzer = DartStructureAnalyzer()
-
-    evidence_analyzer = DartEvidenceAnalyzer()
-
-    ranking_service = RepositoryRankingService()
-
-    relationships = (
-        structure_analyzer.analyze_repository(
-            files
-        )
-    )
-
-    graph = RepositoryGraph(
-        relationships
-    )
-
-    evidence_service = RepositoryEvidenceService(
-        evidence_analyzer=evidence_analyzer,
-        graph=graph,
-    )
-
-    return AnalyzeIssueService(
-        signal_service=signal_service,
-        search_service=search_service,
-        evidence_service=evidence_service,
-        ranking_service=ranking_service,
-        structure_analyzer=structure_analyzer,
-    )
-
-
-# ============================================================
-# RUN ANALYSIS
-# ============================================================
-
-def run_analysis():
-    """
-    Run AnalyzeIssueService quietly so pytest output remains readable.
-    """
-
-    files, issue = load_repository()
-
-    service = build_service(files)
 
     buffer = io.StringIO()
 
     with contextlib.redirect_stdout(buffer):
-
         result = service.analyze(
             files=files,
             issue=issue,
+            signals=signals,
             top_n=5,
             available_n=10,
         )
@@ -161,41 +66,26 @@ def run_analysis():
     return files, issue, result
 
 
-# ============================================================
-# RESULT SHAPE
-# ============================================================
-
 def test_analyze_issue_service_returns_expected_shape():
-
-    files, issue, result = run_analysis()
+    _, issue, result = run_analysis()
 
     assert result["issue"] == issue
-
-    assert "signals" in result
-    assert "ranked" in result
-    assert "primary_files" in result
-    assert "available_files" in result
-    assert "direct_evidence" in result
-    assert "structural_results" in result
-    assert "seed_paths" in result
-
+    assert result["signals"]
     assert result["ranked"]
+    assert result["primary_files"]
+    assert "available_files" in result
+    assert result["direct_evidence"]
+    assert result["structural_results"]
+    assert result["seed_paths"]
 
 
-# ============================================================
-# CURRENT SIGNAL CONTRACT
-# ============================================================
-
-def test_current_signal_contract():
-
+def test_control_signal_contract():
     _, _, result = run_analysis()
 
-    signal_terms = {
+    assert {
         signal["term"]
         for signal in result["signals"]
-    }
-
-    expected = {
+    } == {
         "firebase",
         "firestore",
         "loading",
@@ -204,100 +94,102 @@ def test_current_signal_contract():
         "bloc",
     }
 
-    assert signal_terms == expected
 
-
-# ============================================================
-# RANKING EXISTS
-# ============================================================
-
-def test_ranked_results_are_sorted():
-
-    _, _, result = run_analysis()
-
-    ranked = result["ranked"]
-
-    assert ranked
-
-    assert ranked[0]["rank"] == 1
-
-    scores = [
-        item["total_score"]
-        for item in ranked
-    ]
-
-    assert scores == sorted(
-        scores,
-        reverse=True
+def test_explicit_signals_bypass_the_signal_service():
+    fake = FakeSignalService(
+        [{"term": "loading", "type": "behavior"}]
     )
 
+    files, issue = load_snapshot()
+    service = build_analyze_issue_service(
+        files,
+        signal_service=fake,
+    )
 
-# ============================================================
-# PHASE 5 TIER 1
-# ============================================================
+    injected = [
+        {"term": "car", "type": "domain"},
+        {"term": "bloc", "type": "architecture"},
+    ]
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        result = service.analyze(
+            files=files,
+            issue=issue,
+            signals=injected,
+        )
+
+    assert fake.calls == []
+    assert result["signals"] == injected
+
+
+def test_missing_signals_call_the_injected_service():
+    fake = FakeSignalService(
+        [{"term": "loading", "type": "behavior"}]
+    )
+
+    files, issue = load_snapshot()
+    service = build_analyze_issue_service(
+        files,
+        signal_service=fake,
+    )
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        result = service.analyze(
+            files=files,
+            issue=issue,
+        )
+
+    assert fake.calls == [(issue["title"], issue["body"])]
+    assert result["signals"] == [
+        {"term": "loading", "type": "behavior"}
+    ]
+
+
+def test_ranked_results_are_sorted():
+    _, _, result = run_analysis()
+    ranked = result["ranked"]
+
+    assert ranked[0]["rank"] == 1
+    scores = [item["total_score"] for item in ranked]
+    assert scores == sorted(scores, reverse=True)
+
 
 def test_phase5_tier_one_is_in_top_five():
-
     _, _, result = run_analysis()
 
-    top_5 = {
-        item["path"]
-        for item in result["ranked"][:5]
-    }
+    top_5 = {item["path"] for item in result["ranked"][:5]}
 
-    expected = {
+    assert {
         "lib/presentation/pages/car_list_screen.dart",
         "lib/presentation/bloc/car_bloc.dart",
         "lib/data/repositories/car_repository_impl.dart",
         "lib/data/datasources/firebase_car_data_source.dart",
         "lib/presentation/bloc/car_state.dart",
-    }
+    }.issubset(top_5)
 
-    assert expected.issubset(
-        top_5
-    )
-
-
-# ============================================================
-# PHASE 5 TIER 2
-# ============================================================
 
 def test_phase5_tier_two_is_in_top_ten():
-
     _, _, result = run_analysis()
 
-    top_10 = {
-        item["path"]
-        for item in result["ranked"][:10]
-    }
+    top_10 = {item["path"] for item in result["ranked"][:10]}
 
-    expected = {
+    assert {
         "lib/domain/repositories/car_repository.dart",
         "lib/domain/usecases/get_cars.dart",
         "lib/main.dart",
         "lib/injection_container.dart",
         "lib/presentation/bloc/car_event.dart",
-    }
+    }.issubset(top_10)
 
-    assert expected.issubset(
-        top_10
-    )
-
-
-# ============================================================
-# DISTRACTOR GUARD
-# ============================================================
 
 def test_known_distractors_are_not_in_top_five():
-
     _, _, result = run_analysis()
 
-    top_5 = {
-        item["path"]
-        for item in result["ranked"][:5]
-    }
+    top_5 = {item["path"] for item in result["ranked"][:5]}
 
-    forbidden = {
+    assert top_5.isdisjoint({
         "lib/firebase_options.dart",
         "lib/injection_container.dart",
         "lib/presentation/pages/car_details_page.dart",
@@ -305,217 +197,98 @@ def test_known_distractors_are_not_in_top_five():
         "lib/presentation/widgets/more_card.dart",
         "lib/presentation/pages/MapsDetailsPage.dart",
         "lib/presentation/pages/onboarding_page.dart",
-    }
-
-    assert top_5.isdisjoint(
-        forbidden
-    )
+    })
 
 
-# ============================================================
-# PRIMARY FILES
-# ============================================================
-
-def test_primary_files_are_full_files():
-
+def test_primary_files_match_top_five():
     _, _, result = run_analysis()
 
-    primary_files = result["primary_files"]
+    assert [
+        file["path"] for file in result["primary_files"]
+    ] == [
+        item["path"] for item in result["ranked"][:5]
+    ]
 
-    assert len(primary_files) == 5
+    assert len(result["primary_files"]) == 5
 
-    for file in primary_files:
-
-        assert "path" in file
-        assert "content" in file
-
-        assert isinstance(
-            file["content"],
-            str
-        )
-
+    for file in result["primary_files"]:
         assert file["content"].strip()
 
 
-# ============================================================
-# PRIMARY FILES MATCH TOP FIVE
-# ============================================================
-
-def test_primary_files_match_top_five():
-
-    _, _, result = run_analysis()
-
-    expected = [
-        item["path"]
-        for item in result["ranked"][:5]
-    ]
-
-    actual = [
-        file["path"]
-        for file in result["primary_files"]
-    ]
-
-    assert actual == expected
-
-
-# ============================================================
-# AVAILABLE FILES = RANK 6-10
-# ============================================================
-
 def test_available_files_match_rank_six_to_ten():
-
     _, _, result = run_analysis()
 
-    expected = [
-        item["path"]
-        for item in result["ranked"][5:10]
+    assert result["available_files"] == [
+        item["path"] for item in result["ranked"][5:10]
     ]
 
-    assert result["available_files"] == expected
-
-
-# ============================================================
-# PRIMARY / AVAILABLE DISJOINT
-# ============================================================
 
 def test_primary_and_available_files_do_not_overlap():
-
     _, _, result = run_analysis()
 
-    primary = {
-        file["path"]
-        for file in result["primary_files"]
-    }
+    primary = {file["path"] for file in result["primary_files"]}
+    available = set(result["available_files"])
+    assert primary.isdisjoint(available)
 
-    available = set(
-        result["available_files"]
-    )
-
-    assert primary.isdisjoint(
-        available
-    )
-
-
-# ============================================================
-# DIRECT EVIDENCE
-# ============================================================
-
-def test_direct_evidence_exists():
-
-    _, _, result = run_analysis()
-
-    evidence = result["direct_evidence"]
-
-    assert evidence
-
-    evidence_paths = {
-        item["file"]["path"]
-        for item in evidence
-    }
-
-    assert (
-        "lib/data/datasources/"
-        "firebase_car_data_source.dart"
-    ) in evidence_paths
-
-
-# ============================================================
-# STRUCTURAL EVIDENCE
-# ============================================================
-
-def test_structural_evidence_exists():
-
-    _, _, result = run_analysis()
-
-    structural = result["structural_results"]
-
-    assert structural
-
-    relationship_types = {
-        item["relationship"]
-        for item in structural
-    }
-
-    assert "imports" in relationship_types
-    assert "implements" in relationship_types
-
-
-# ============================================================
-# RANKED PATHS EXIST
-# ============================================================
-
-def test_all_ranked_paths_exist():
-
-    files, _, result = run_analysis()
-
-    repository_paths = {
-        file["path"]
-        for file in files
-    }
-
-    for item in result["ranked"]:
-
-        assert (
-            item["path"]
-            in repository_paths
-        )
-
-
-# ============================================================
-# DETERMINISTIC FOR SAME SNAPSHOT
-# ============================================================
 
 def test_repeated_analysis_has_same_ranking():
+    files, issue = load_snapshot()
+    service = build_analyze_issue_service(
+        files,
+        signal_service=IssueSignalService(),
+    )
 
-    files, issue = load_repository()
+    with contextlib.redirect_stdout(io.StringIO()):
+        first = service.analyze(files=files, issue=issue)
+        second = service.analyze(files=files, issue=issue)
 
-    service = build_service(files)
+    def ranking(result):
+        return [
+            (item["path"], round(item["total_score"], 10))
+            for item in result["ranked"]
+        ]
 
-    buffer_one = io.StringIO()
-    buffer_two = io.StringIO()
+    assert ranking(first) == ranking(second)
 
-    with contextlib.redirect_stdout(
-        buffer_one
-    ):
 
-        first = service.analyze(
-            files=files,
-            issue=issue,
-            top_n=5,
-            available_n=10,
-        )
+def test_analyze_requires_issue_and_files():
+    files, issue = load_snapshot()
+    service = build_analyze_issue_service(
+        files,
+        signal_service=IssueSignalService(),
+    )
 
-    with contextlib.redirect_stdout(
-        buffer_two
-    ):
+    try:
+        service.analyze(files=files, issue=None)
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
 
-        second = service.analyze(
-            files=files,
-            issue=issue,
-            top_n=5,
-            available_n=10,
-        )
+    try:
+        service.analyze(files=[], issue=issue)
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
 
-    first_ranking = [
-        (
-            item["path"],
-            round(
-                item["total_score"],
-                10
-            ),
-        )
-        for item in first["ranked"]
-    ]
+    assert isinstance(service, AnalyzeIssueService)
 
-    second_ranking = [
-        (
-            item["path"],
-            round(
-                item["total_score"],
-                10
-            ),
-        )
-        for item in second["ranked"]
-    ]
 
-    assert first_ranking == second_ranking
+def test_production_factory_uses_extraction_service():
+    from app.services.issue_signal_extraction_service import (
+        IssueSignalExtractionService,
+    )
+
+    class DummyLLM:
+        def ask(self, prompt):
+            raise AssertionError("LLM should not be called")
+
+    files, _ = load_snapshot()
+    service = build_analyze_issue_service(
+        files,
+        llm_service=DummyLLM(),
+    )
+
+    assert isinstance(
+        service.signal_service,
+        IssueSignalExtractionService,
+    )

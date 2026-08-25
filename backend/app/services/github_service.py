@@ -17,9 +17,10 @@ class GithubService:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            print("STATUS:", e.response.status_code)
-            print("RESPONSE:", e.response.text)
-            raise Exception(f"Failed to get {url}")
+            raise Exception(
+                f"Failed to get {url}: "
+                f"{e.response.status_code} {e.response.text}"
+            ) from e
 
     def authenticate(self):
         return self._request("https://api.github.com/user")

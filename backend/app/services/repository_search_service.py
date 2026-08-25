@@ -68,11 +68,6 @@ class RepositorySearchService:
 
         results = []
 
-        print(
-            "QUERY CONCEPTS:",
-            self.normalizer.concepts(query),
-        )
-
         for file in files:
 
             if not self.is_candidate_file(file):
@@ -84,7 +79,6 @@ class RepositorySearchService:
             ):
                 continue
 
-            print("MATCH:", file["path"])
             results.append(file)
 
         return results

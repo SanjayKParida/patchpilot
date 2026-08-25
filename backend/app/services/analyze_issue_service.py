@@ -20,7 +20,7 @@ class AnalyzeIssueService:
 
     It does NOT:
         - diagnose the bug
-        - call the LLM
+        - call the LLM itself (signal extraction is delegated)
         - extract code regions
         - implement ranking rules
         - implement language-specific analysis
@@ -128,24 +128,18 @@ class AnalyzeIssueService:
             )
 
         # -----------------------------------------------------
-        # Build repository structure
+        # Repository graph
         # -----------------------------------------------------
-
-        relationships = (
-            self.structure_analyzer.analyze_repository(
-                files
-            )
-        )
 
         graph = self.evidence_service.graph
 
-        # Keep the graph already owned by EvidenceService if
-        # one was supplied there. Rebuild only if necessary.
         if graph is None:
             from app.utils.repository_graph import RepositoryGraph
 
             graph = RepositoryGraph(
-                relationships
+                self.structure_analyzer.analyze_repository(
+                    files
+                )
             )
 
         # -----------------------------------------------------
@@ -390,14 +384,8 @@ class AnalyzeIssueService:
                 "file": target_file,
                 "source": result.get("source"),
                 "target": target_path,
-                "relationship": (
-                    result.get("relationship")
-                    or result.get("relationship")
-                ),
-                "distance": (
-                    result.get("distance")
-                    or result.get("distance")
-                ),
+                "relationship": result.get("relationship"),
+                "distance": result.get("distance"),
             })
 
         return converted
@@ -419,10 +407,7 @@ class AnalyzeIssueService:
 
         sorted_scores = sorted(
             final_scores.items(),
-            key=lambda item: item[1].get(
-                "total_score",
-                item[1].get("total_score", 0),
-            ),
+            key=lambda item: item[1].get("total_score", 0),
             reverse=True
         )
 
@@ -438,10 +423,7 @@ class AnalyzeIssueService:
                 "rank": index,
                 "sha": sha,
                 "path": score["path"],
-                "total_score": score.get(
-                    "total_score",
-                    score.get("total_score", 0),
-                ),
+                "total_score": score.get("total_score", 0),
                 "direct_score": score.get(
                     "direct_score",
                     0
@@ -450,10 +432,7 @@ class AnalyzeIssueService:
                     "structural_score",
                     0
                 ),
-                "signals_matched": score.get(
-                    "signals_matched",
-                    score.get("signals_matched", 0),
-                ),
+                "signals_matched": score.get("signals_matched", 0),
                 "path_confidence": score.get(
                     "path_confidence",
                     0
@@ -472,8 +451,8 @@ class AnalyzeIssueService:
 
     @staticmethod
     def _issue_text(issue):
-        title = issue.get("title") or issue.get("title") or ""
-        body = issue.get("body") or issue.get("body") or ""
+        title = issue.get("title") or ""
+        body = issue.get("body") or ""
         return title, body
 
 

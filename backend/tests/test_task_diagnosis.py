@@ -1,146 +1,19 @@
 import contextlib
 import io
-import json
-import os
-from pathlib import Path
 
-from dotenv import load_dotenv
+import pytest
 
-from app.services.github_service import GithubService
-from app.services.analyze_issue_service import AnalyzeIssueService
 from app.services.issue_diagnosis_service import IssueDiagnosisService
 from app.services.llm_service import LLMService
 
-from app.services.issue_signal_service import IssueSignalService
-from app.services.repository_evidence_service import (
-    RepositoryEvidenceService,
-)
-from app.services.repository_ranking_service import (
-    RepositoryRankingService,
-)
-from app.services.repository_search_service import (
-    RepositorySearchService,
-)
-
-from app.utils.dart.dart_evidence_analyzer import (
-    DartEvidenceAnalyzer,
-)
-from app.utils.dart.dart_structure_analyzer import (
-    DartStructureAnalyzer,
-)
-from app.utils.repository_graph import RepositoryGraph
-
-
-# ============================================================
-# ENVIRONMENT
-# ============================================================
-
-load_dotenv()
-
-
-# ============================================================
-# CONFIG
-# ============================================================
-
-OWNER = "SanjayKParida"
-REPO = "patchpilot-diagnosis-demo"
-
-CASES_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "evalutation"
-    / "cases"
+from tests.integration_helpers import (
+    build_control_analysis_service,
+    load_case,
+    load_task_demo_files,
 )
 
 
-# ============================================================
-# LOAD CASE
-# ============================================================
-
-def load_case(name):
-    path = CASES_DIR / f"{name}.json"
-
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Case not found: {path}"
-        )
-
-    return json.loads(
-        path.read_text()
-    )
-
-
-# ============================================================
-# LOAD REPOSITORY
-# ============================================================
-
-def load_repository():
-
-    token = os.getenv(
-        "GITHUB_TOKEN"
-    )
-
-    if not token:
-        raise RuntimeError(
-            "GITHUB_TOKEN is not set"
-        )
-
-    github = GithubService(
-        token
-    )
-
-    github.authenticate()
-
-    files = github.get_repository_source_files(
-        OWNER,
-        REPO
-    )
-
-    if not files:
-        raise RuntimeError(
-            "No repository source files found"
-        )
-
-    return files
-
-
-# ============================================================
-# BUILD ANALYSIS SERVICE
-# ============================================================
-
-def build_analysis_service(files):
-
-    signal_service = IssueSignalService()
-
-    search_service = RepositorySearchService()
-
-    structure_analyzer = DartStructureAnalyzer()
-
-    evidence_analyzer = DartEvidenceAnalyzer()
-
-    ranking_service = RepositoryRankingService()
-
-    relationships = (
-        structure_analyzer.analyze_repository(
-            files
-        )
-    )
-
-    graph = RepositoryGraph(
-        relationships
-    )
-
-    evidence_service = RepositoryEvidenceService(
-        evidence_analyzer=evidence_analyzer,
-        graph=graph,
-    )
-
-    return AnalyzeIssueService(
-        signal_service=signal_service,
-        search_service=search_service,
-        evidence_service=evidence_service,
-        ranking_service=ranking_service,
-        structure_analyzer=structure_analyzer,
-    )
+pytestmark = pytest.mark.integration
 
 
 # ============================================================
@@ -153,15 +26,14 @@ def run_case(case_name):
         case_name
     )
 
-    files = load_repository()
+    files = load_task_demo_files()
 
     analysis_service = (
-        build_analysis_service(
+        build_control_analysis_service(
             files
         )
     )
 
-    # Suppress noisy repository/ranking output.
     analysis_buffer = io.StringIO()
 
     with contextlib.redirect_stdout(
@@ -173,7 +45,7 @@ def run_case(case_name):
                 files=files,
                 issue={
                     "title": case["title"],
-                    "body": ""
+                    "body": case.get("body", ""),
                 },
                 signals=case["signals"],
                 top_n=5,
