@@ -89,8 +89,69 @@ Issue Analyzer
         ▼           ▼
    Show result   Show failure
 
-## Security
+## Analyze Issue
 
-## Evaluation
+### Input
+
+- repositoryId
+- issueId
+
+GitHub authorization is handled by the backend rather than being
+passed directly with every analysis request.
+
+### Processing
+
+1. Fetch the issue from GitHub.
+2. Extract relevant signals and context from the issue.
+3. Search the repository to identify candidate files.
+4. Inspect candidate files to identify relevant code.
+5. Build a focused context from the relevant code.
+6. Analyze the issue and determine a likely root cause.
+7. Generate a structured fix proposal.
+8. Identify files that would need to be changed.
+9. Identify tests that should be added or modified.
+10. Return the analysis and proposal to the client.
+
+### Output
+
+```json
+{
+    "issueId": "",
+    "description": "",
+    "cause": "",
+    "relatedFiles": [],
+    "evidence": [],
+    "proposedChanges": [],
+    "tests": [],
+    "status": ""
+}
+
+## Architecture
+
+GitHub Issue
+     │
+     ▼
+LLM #1 — Extract useful signals
+     │
+     │  e.g.
+     │  OTP, verification, expiry, 500
+     ▼
+Repository Search
+     │
+     │  Search code/symbols/files
+     ▼
+Candidate files
+     │
+     │  e.g. 15 files
+     ▼
+LLM #2 — Relevance analysis
+     │
+     │  inspect candidate context
+     ▼
+Relevant files
+     │
+     │  e.g. 4 files
+     ▼
+Fix-analysis agent
 
 ## Open Questions

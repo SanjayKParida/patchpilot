@@ -1,0 +1,97 @@
+{
+  "metrics": {
+    "tier_1_in_top_5": 4,
+    "tier_1_total": 5,
+    "tier_2_in_top_10": 4,
+    "tier_2_total": 5,
+    "missing_entirely": 0,
+    "violations": 0
+  },
+  "ranked": [
+    {
+      "rank": 1,
+      "path": "lib/data/datasources/firebase_car_data_source.dart",
+      "total_score": 17.9048
+    },
+    {
+      "rank": 2,
+      "path": "lib/data/repositories/car_repository_impl.dart",
+      "total_score": 13.8481
+    },
+    {
+      "rank": 3,
+      "path": "lib/presentation/bloc/car_bloc.dart",
+      "total_score": 13.1549
+    },
+    {
+      "rank": 4,
+      "path": "lib/domain/repositories/car_repository.dart",
+      "total_score": 11.51
+    },
+    {
+      "rank": 5,
+      "path": "lib/presentation/bloc/car_state.dart",
+      "total_score": 10.8837
+    },
+    {
+      "rank": 6,
+      "path": "lib/firebase_options.dart",
+      "total_score": 10.8421
+    },
+    {
+      "rank": 7,
+      "path": "lib/injection_container.dart",
+      "total_score": 10.3563
+    },
+    {
+      "rank": 8,
+      "path": "lib/presentation/pages/car_list_screen.dart",
+      "total_score": 8.7218
+    },
+    {
+      "rank": 9,
+      "path": "lib/main.dart",
+      "total_score": 7.9813
+    },
+    {
+      "rank": 10,
+      "path": "lib/presentation/bloc/car_event.dart",
+      "total_score": 7.35
+    },
+    {
+      "rank": 11,
+      "path": "lib/domain/usecases/get_cars.dart",
+      "total_score": 6.2196
+    },
+    {
+      "rank": 12,
+      "path": "lib/presentation/widgets/car_card.dart",
+      "total_score": 5.4542
+    },
+    {
+      "rank": 13,
+      "path": "lib/presentation/pages/car_details_page.dart",
+      "total_score": 5.4352
+    },
+    {
+      "rank": 14,
+      "path": "lib/data/models/car.dart",
+      "total_score": 5.3517
+    },
+    {
+      "rank": 15,
+      "path": "lib/presentation/widgets/more_card.dart",
+      "total_score": 3.6885
+    },
+    {
+      "rank": 16,
+      "path": "lib/presentation/pages/MapsDetailsPage.dart",
+      "total_score": 3.0763
+    },
+    {
+      "rank": 17,
+      "path": "lib/presentation/pages/onboarding_page.dart",
+      "total_score": 2.1632
+    }
+  ]
+}

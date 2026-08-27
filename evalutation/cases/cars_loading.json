@@ -1,0 +1,117 @@
+{
+  "name": "cars_loading",
+  "fixture": "car_rental_app",
+  "issue_title": "Cars keep loading indefinitely on the home screen",
+  "signals_note": "Pinned deliberately. This case measures RANKING, so the signal set is held fixed; letting IssueSignalService vary would confound every before/after comparison in the phase baselines. Signal extraction is evaluated separately.",
+  "signals": [
+    {
+      "term": "firebase",
+      "type": "technology"
+    },
+    {
+      "term": "firestore",
+      "type": "technology"
+    },
+    {
+      "term": "loading",
+      "type": "behavior"
+    },
+    {
+      "term": "car",
+      "type": "domain"
+    },
+    {
+      "term": "repository",
+      "type": "architecture"
+    },
+    {
+      "term": "bloc",
+      "type": "architecture"
+    }
+  ],
+  "principle": [
+    "This is a RETRIEVAL ground truth, not a diagnosis.",
+    "It answers: which files must a competent developer have open to",
+    "diagnose this issue? It deliberately does not name a root-cause",
+    "line, because pinpointing the defect is the LLM's job downstream.",
+    "",
+    "Ranking within a tier is a soft ideal and is reported for",
+    "information only. The hard assertions are tier membership:",
+    "tier 1 belongs in the top 5, tier 2 in the top 10, and the",
+    "distractor list belongs outside the top 5."
+  ],
+  "tier_1": [
+    {
+      "path": "lib/presentation/bloc/car_bloc.dart",
+      "why": "Owns the loading state machine. Starts in CarsLoading() and only leaves it when a LoadCars event is handled. 'Stuck loading' is by definition a defect in, or a failure to reach, this transition."
+    },
+    {
+      "path": "lib/data/datasources/firebase_car_data_source.dart",
+      "why": "The Firestore fetch the issue body names explicitly. An awaited call that never resolves leaves the BLoC in CarsLoading forever."
+    },
+    {
+      "path": "lib/data/repositories/car_repository_impl.dart",
+      "why": "The repository hop the issue body names explicitly; it forwards the data source future to the use case."
+    },
+    {
+      "path": "lib/presentation/pages/car_list_screen.dart",
+      "why": "Renders the CircularProgressIndicator the user is looking at and consumes CarState via BlocBuilder. The reported symptom is observed here."
+    },
+    {
+      "path": "lib/presentation/bloc/car_state.dart",
+      "why": "Declares CarsLoading / CarsLoaded / CarsError. Any state-identity or transition problem is visible here."
+    }
+  ],
+  "tier_2": [
+    {
+      "path": "lib/domain/usecases/get_cars.dart",
+      "why": "The direct call site between the BLoC and the repository. It sits inside the exact chain the issue describes and cannot be skipped when tracing the await."
+    },
+    {
+      "path": "lib/injection_container.dart",
+      "why": "Wires the whole chain. A wrong registration lifetime (registerFactory vs singleton) plausibly yields a BLoC that never receives its event."
+    },
+    {
+      "path": "lib/main.dart",
+      "why": "Where LoadCars() is dispatched into the BLoC. A missing or misplaced dispatch is the classic cause of a permanently-loading screen."
+    },
+    {
+      "path": "lib/presentation/bloc/car_event.dart",
+      "why": "Declares the LoadCars event that drives the transition out of CarsLoading."
+    },
+    {
+      "path": "lib/domain/repositories/car_repository.dart",
+      "why": "The contract for the repository hop. Real but thin: five lines of abstract signature, so low diagnostic value."
+    }
+  ],
+  "must_not_rank_top_5": [
+    {
+      "path": "lib/firebase_options.dart",
+      "why": "Generated FlutterFire configuration. Mentions 'firebase' more than any other file and contains no logic that could hang. This is the canonical false positive for lexical scoring."
+    },
+    {
+      "path": "lib/data/models/car.dart",
+      "why": "A data holder. Car.fromMap could throw, but that surfaces as CarsError, not as indefinite loading."
+    },
+    {
+      "path": "lib/presentation/widgets/car_card.dart",
+      "why": "Renders a car that has already loaded. Cannot run before CarsLoaded is emitted."
+    },
+    {
+      "path": "lib/presentation/widgets/more_card.dart",
+      "why": "Unrelated presentation widget. Matches the 'car' signal only through the substring in 'card'."
+    },
+    {
+      "path": "lib/presentation/pages/car_details_page.dart",
+      "why": "A different screen, reached only after a car is selected."
+    },
+    {
+      "path": "lib/presentation/pages/MapsDetailsPage.dart",
+      "why": "Unrelated screen."
+    },
+    {
+      "path": "lib/presentation/pages/onboarding_page.dart",
+      "why": "Navigation only; pushes the car list screen but owns no loading state."
+    }
+  ]
+}

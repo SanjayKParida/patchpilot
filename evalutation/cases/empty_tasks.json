@@ -1,0 +1,71 @@
+{
+  "issue_number": 2,
+  "title": "Task list shows an error screen instead of an empty state after deleting all tasks",
+  "body": "Deleting every task from the list should leave the user with an empty task list ('No tasks yet'). Instead, once the last task is removed, the screen switches to a generic error view.\n\nSteps to reproduce:\n1. Launch the app with the seeded tasks.\n2. Delete tasks one at a time until none remain.\n3. Observe the screen after the last task is deleted.\n\nExpected behavior:\nOnce all tasks have been removed, the screen should show a friendly empty state.\n\nActual behavior:\nThe screen shows 'Failed to load tasks' and 'No tasks found in local storage' with a Retry button.\n\nAdditional context:\nThe bug only occurs when the list becomes empty. Deleting until one task remains works correctly. This reproduces without using refresh.",
+  "signals": [
+    {
+      "term": "empty",
+      "type": "behavior"
+    },
+    {
+      "term": "error",
+      "type": "behavior"
+    },
+    {
+      "term": "delete",
+      "type": "behavior"
+    },
+    {
+      "term": "task",
+      "type": "domain"
+    },
+    {
+      "term": "storage",
+      "type": "technology"
+    }
+  ],
+  "retrieval_ground_truth": {
+    "tier_1": [
+      "lib/data/datasources/task_local_data_source.dart"
+    ],
+    "tier_2": [
+      "lib/data/repositories/task_repository_impl.dart",
+      "lib/presentation/bloc/task_bloc.dart",
+      "lib/presentation/pages/task_list_page.dart"
+    ],
+    "forbidden_top_5": [
+      "lib/domain/usecases/get_filtered_tasks.dart",
+      "lib/presentation/widgets/filter_chips.dart",
+      "lib/domain/entities/task_filter.dart",
+      "lib/domain/usecases/toggle_task_completion.dart",
+      "lib/presentation/widgets/task_tile.dart"
+    ]
+  },
+  "diagnosis_ground_truth": {
+    "cause_class": "invalid_empty_state_handling",
+    "affected_files": [
+      "lib/data/datasources/task_local_data_source.dart"
+    ],
+    "mechanism_concepts": [
+      [
+        "getTasks"
+      ],
+      [
+        "_tasks.isEmpty",
+        "empty"
+      ],
+      [
+        "CacheException",
+        "throws"
+      ]
+    ],
+    "fix_concepts": [
+      [
+        "return []",
+        "empty list",
+        "return an empty list",
+        "Success([])"
+      ]
+    ]
+  }
+}

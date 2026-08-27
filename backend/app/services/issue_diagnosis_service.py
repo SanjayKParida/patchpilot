@@ -388,6 +388,8 @@ Return JSON with exactly these fields:
   "root_cause": "string",
   "confidence": 0.0,
   "relevant_files": ["path"],
+  "root_cause_symbols": ["EnclosingDeclarationName"],
+  "symbols": ["SymbolName"],
   "explanation": "string",
   "suggested_fix": "string"
 }
@@ -398,6 +400,21 @@ Requirements:
 - confidence must be a number between 0 and 1.
 - relevant_files should contain only repository files supported
   by the provided evidence.
+- root_cause_symbols must name the declaration that CONTAINS THE
+  DEFECT -- the specific function, method or class a developer has to
+  open and edit to fix this. Usually exactly one. Name the enclosing
+  declaration, not a type it merely mentions: if the bug is a wrong
+  branch inside `_applyFilter`, the answer is `_applyFilter`, not the
+  enum that branch switches on.
+- symbols is for SUPPORTING declarations -- the types, states and
+  events that explain the failure but are not themselves wrong.
+- A declaration must not appear in both lists. Ask yourself "would I
+  edit this file to fix the bug?" If no, it is a supporting symbol.
+- Copy every name verbatim from the supplied source, including any
+  leading underscore. Bare names only: write `_applyFilter`, never
+  `TaskBloc._applyFilter` or `TaskFilter.active`.
+- Do NOT report line numbers. Name the symbol; its location is
+  resolved from the code, not from you.
 - explanation should connect the issue to the supplied code.
 - suggested_fix should describe the likely corrective action.
 - Do not assume rank #1 is the culprit.
@@ -560,7 +577,45 @@ Requirements:
                     "every relevant file must be a string"
                 )
 
+        # `symbols` is OPTIONAL and additive. A diagnosis produced
+        # before this field existed, or by a model that ignores it,
+        # must remain valid — navigation degrades to file level
+        # rather than the analysis failing.
+        def clean_symbols(value):
+            if not isinstance(value, list):
+                return []
+
+            cleaned = []
+
+            for symbol in value:
+                if not isinstance(symbol, str):
+                    continue
+
+                symbol = symbol.strip()
+
+                if symbol and symbol not in cleaned:
+                    cleaned.append(symbol)
+
+            return cleaned
+
+        root_cause_symbols = clean_symbols(
+            data.get("root_cause_symbols")
+        )
+
+        # Supporting symbols are for context. Anything already named
+        # as the defect site is not repeated here, so the two lists
+        # stay meaningfully different in the UI.
+        symbols = [
+            symbol
+            for symbol in clean_symbols(data.get("symbols"))
+            if symbol not in root_cause_symbols
+        ]
+
         return {
+            "root_cause_symbols": root_cause_symbols,
+
+            "symbols": symbols,
+
             "root_cause": data[
                 "root_cause"
             ].strip(),

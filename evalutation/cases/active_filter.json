@@ -1,0 +1,67 @@
+{
+  "issue_number": 3,
+  "title": "Active filter shows completed tasks instead of tasks that are still pending",
+  "body": "The task list screen has three filter chips: All, Active, and Completed. Selecting Active is supposed to show only tasks that have not been finished yet, but it instead shows tasks that have already been checked off.\n\nSteps to reproduce:\n1. Launch the app with the seeded mix of completed and pending tasks.\n2. Note which tasks are checked and unchecked under All.\n3. Tap the Active filter.\n\nExpected behavior:\nOnly tasks that are not completed should appear.\n\nActual behavior:\nThe Active list shows completed tasks, while pending tasks disappear.\n\nAdditional context:\nThe All filter works correctly and the Completed filter also works correctly. The issue is specifically with the Active filter logic.",
+  "signals": [
+    {
+      "term": "active",
+      "type": "behavior"
+    },
+    {
+      "term": "completed",
+      "type": "behavior"
+    },
+    {
+      "term": "filter",
+      "type": "architecture"
+    },
+    {
+      "term": "task",
+      "type": "domain"
+    },
+    {
+      "term": "pending",
+      "type": "behavior"
+    }
+  ],
+  "retrieval_ground_truth": {
+    "tier_1": [
+      "lib/domain/usecases/get_filtered_tasks.dart"
+    ],
+    "tier_2": [
+      "lib/domain/entities/task_filter.dart"
+    ],
+    "forbidden_top_5": [
+      "lib/data/datasources/task_local_data_source.dart",
+      "lib/presentation/bloc/task_bloc.dart",
+      "lib/data/repositories/task_repository_impl.dart",
+      "lib/domain/usecases/delete_task.dart",
+      "lib/presentation/widgets/task_tile.dart"
+    ]
+  },
+  "diagnosis_ground_truth": {
+    "cause_class": "incorrect_filter_condition",
+    "affected_files": [
+      "lib/domain/usecases/get_filtered_tasks.dart"
+    ],
+    "mechanism_concepts": [
+      [
+        "TaskFilter.active"
+      ],
+      [
+        "isCompleted",
+        "non-completed",
+        "incomplete",
+        "!task.isCompleted"
+      ]
+    ],
+    "fix_concepts": [
+      [
+        "!task.isCompleted",
+        "isCompleted == false",
+        "non-completed",
+        "incomplete"
+      ]
+    ]
+  }
+}

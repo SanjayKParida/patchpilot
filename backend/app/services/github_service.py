@@ -1,7 +1,17 @@
-import httpx
 import base64
+import logging
+
+import httpx
+
+from app.errors import RepositoryNotFound, UpstreamUnavailable
+
+logger = logging.getLogger(__name__)
+
 
 class GithubService:
+
+    TIMEOUT_SECONDS = 30.0
+
     def __init__(self, github_token: str):
         self.github_token = github_token
 
@@ -9,6 +19,7 @@ class GithubService:
         try:
             response = httpx.get(
                 url,
+                timeout=self.TIMEOUT_SECONDS,
                 headers={
                     "Authorization": f"Bearer {self.github_token}",
                     "Accept": "application/vnd.github+json",
@@ -17,9 +28,31 @@ class GithubService:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            raise Exception(
-                f"Failed to get {url}: "
-                f"{e.response.status_code} {e.response.text}"
+            status = e.response.status_code
+
+            # GitHub's body explains WHY (bad credentials, rate limit,
+            # SAML enforcement). It is logged rather than returned:
+            # these messages reach an HTTP client, and the upstream
+            # body is for the operator, not the caller.
+            logger.warning(
+                "GitHub %s for %s: %s",
+                status,
+                url,
+                e.response.text[:500],
+            )
+
+            if status == 404:
+                raise RepositoryNotFound(
+                    f"GitHub returned 404 for {url}"
+                ) from e
+
+            raise UpstreamUnavailable(
+                f"GitHub returned {status} for {url}"
+            ) from e
+
+        except httpx.HTTPError as e:
+            raise UpstreamUnavailable(
+                f"Could not reach GitHub: {e}"
             ) from e
 
     def authenticate(self):

@@ -1,0 +1,66 @@
+{
+  "issue_number": 1,
+  "title": "App gets stuck on the loading spinner after refreshing the task list",
+  "body": "After the task list has loaded successfully, using the refresh action on the list screen causes the app to become permanently stuck on a loading spinner. The app has to be force-closed and reopened to recover.\n\nSteps to reproduce:\n1. Launch the app and wait for the task list to finish loading.\n2. Tap the refresh icon in the app bar.\n3. Observe the screen.\n\nExpected behavior:\nA brief loading spinner appears, and then the task list is shown again.\n\nActual behavior:\nThe loading spinner appears and never goes away. The task list is not shown again. No error message is displayed.\n\nAdditional context:\nThis reproduces 100% of the time. Other actions on the same screen work correctly. Switching between filter tabs before refreshing does not change the outcome. No exception or error is printed to the console.",
+  "signals": [
+    {
+      "term": "refresh",
+      "type": "behavior"
+    },
+    {
+      "term": "loading",
+      "type": "behavior"
+    },
+    {
+      "term": "task",
+      "type": "domain"
+    },
+    {
+      "term": "state",
+      "type": "architecture"
+    }
+  ],
+  "retrieval_ground_truth": {
+    "tier_1": [
+      "lib/presentation/bloc/task_bloc.dart"
+    ],
+    "tier_2": [
+      "lib/presentation/pages/task_list_page.dart",
+      "lib/presentation/bloc/task_state.dart",
+      "lib/presentation/bloc/task_event.dart"
+    ],
+    "forbidden_top_5": [
+      "lib/domain/usecases/get_filtered_tasks.dart",
+      "lib/data/datasources/task_local_data_source.dart",
+      "lib/presentation/widgets/filter_chips.dart",
+      "lib/domain/usecases/delete_task.dart",
+      "lib/presentation/widgets/task_tile.dart"
+    ]
+  },
+  "diagnosis_ground_truth": {
+    "cause_class": "missing_state_transition",
+    "affected_files": [
+      "lib/presentation/bloc/task_bloc.dart"
+    ],
+    "mechanism_concepts": [
+      [
+        "RefreshTasksRequested"
+      ],
+      [
+        "TaskLoading"
+      ],
+      [
+        "TaskLoaded",
+        "emit(TaskLoaded",
+        "remains in TaskLoading"
+      ]
+    ],
+    "fix_concepts": [
+      [
+        "emit(TaskLoaded",
+        "TaskLoaded",
+        "LoadTasksRequested"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "name": "payment_pending",
+  "fixture": "checkout_app",
+  "issue_title": "Checkout screen hangs on the pending spinner",
+
+  "principle": [
+    "GENERALIZATION TEST for Phase 4 consumption evidence.",
+    "",
+    "This fixture is SYNTHETIC — the Dart was written for this test,",
+    "unlike car_rental_app which is a real repository. It is therefore",
+    "a weaker piece of evidence, and it exists to answer one narrow",
+    "question: does consumption evidence help a state-consuming screen",
+    "in a codebase whose vocabulary shares no words with the case it",
+    "was developed against?",
+    "",
+    "It deliberately mirrors the STRUCTURE of the car case (owner bloc,",
+    "state classes, consuming screen, DI container, generated config)",
+    "while sharing none of its VOCABULARY, so the mechanism is under",
+    "test rather than the strings.",
+    "",
+    "Read it as: the mechanism transfers, or it does not. Do not tune",
+    "against it."
+  ],
+
+  "signals": [
+    {"term": "pending", "type": "behavior"},
+    {"term": "stripe", "type": "technology"},
+    {"term": "payment", "type": "domain"},
+    {"term": "repository", "type": "architecture"},
+    {"term": "bloc", "type": "architecture"}
+  ],
+
+  "tier_1": [
+    {
+      "path": "lib/presentation/bloc/payment_bloc.dart",
+      "why": "Owns the state machine. Starts in PaymentPending() and only leaves it when SubmitPressed is handled."
+    },
+    {
+      "path": "lib/data/gateways/stripe_payment_gateway.dart",
+      "why": "The Stripe call the issue body names. An awaited call that never resolves leaves the bloc pending forever."
+    },
+    {
+      "path": "lib/data/repositories/payment_repository_impl.dart",
+      "why": "The repository hop the issue body names."
+    },
+    {
+      "path": "lib/presentation/pages/checkout_screen.dart",
+      "why": "THE CONSUMER CASE. Renders the pending spinner and branches on PaymentPending, which it does not declare. Under ownership-only scoring this file is invisible."
+    },
+    {
+      "path": "lib/presentation/bloc/payment_state.dart",
+      "why": "Declares PaymentPending / PaymentSuccess / PaymentFailed."
+    }
+  ],
+
+  "tier_2": [
+    {
+      "path": "lib/domain/usecases/submit_payment.dart",
+      "why": "The call site between the bloc and the repository."
+    },
+    {
+      "path": "lib/service_locator.dart",
+      "why": "Wires the chain; a wrong registration lifetime is a plausible cause."
+    },
+    {
+      "path": "lib/main.dart",
+      "why": "Where SubmitPressed is dispatched into the bloc."
+    },
+    {
+      "path": "lib/presentation/bloc/payment_event.dart",
+      "why": "Declares the event that drives the transition out of pending."
+    },
+    {
+      "path": "lib/domain/repositories/payment_repository.dart",
+      "why": "The contract for the repository hop. Thin, so low diagnostic value."
+    }
+  ],
+
+  "must_not_rank_top_5": [
+    {
+      "path": "lib/stripe_options.dart",
+      "why": "Generated configuration. Mentions Stripe more than any other file and contains no logic that could hang."
+    },
+    {
+      "path": "lib/data/models/payment.dart",
+      "why": "A data holder."
+    },
+    {
+      "path": "lib/presentation/widgets/receipt_card.dart",
+      "why": "Renders a payment that already succeeded; cannot run while pending."
+    },
+    {
+      "path": "lib/presentation/pages/order_history_page.dart",
+      "why": "Unrelated screen."
+    }
+  ]
+}

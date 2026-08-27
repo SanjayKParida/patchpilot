@@ -1,0 +1,82 @@
+{
+  "metrics": {
+    "tier_1_in_top_5": 4,
+    "tier_1_total": 5,
+    "tier_2_in_top_10": 4,
+    "tier_2_total": 5,
+    "missing_entirely": 0,
+    "violations": 0
+  },
+  "ranked": [
+    {
+      "rank": 1,
+      "path": "lib/presentation/pages/checkout_screen.dart",
+      "total_score": 4.8738
+    },
+    {
+      "rank": 2,
+      "path": "lib/presentation/bloc/payment_bloc.dart",
+      "total_score": 4.3797
+    },
+    {
+      "rank": 3,
+      "path": "lib/presentation/bloc/payment_state.dart",
+      "total_score": 3.9939
+    },
+    {
+      "rank": 4,
+      "path": "lib/data/repositories/payment_repository_impl.dart",
+      "total_score": 3.9517
+    },
+    {
+      "rank": 5,
+      "path": "lib/domain/repositories/payment_repository.dart",
+      "total_score": 3.6188
+    },
+    {
+      "rank": 6,
+      "path": "lib/data/gateways/stripe_payment_gateway.dart",
+      "total_score": 2.8493
+    },
+    {
+      "rank": 7,
+      "path": "lib/domain/usecases/submit_payment.dart",
+      "total_score": 2.8353
+    },
+    {
+      "rank": 8,
+      "path": "lib/main.dart",
+      "total_score": 2.6923
+    },
+    {
+      "rank": 9,
+      "path": "lib/presentation/bloc/payment_event.dart",
+      "total_score": 2.0689
+    },
+    {
+      "rank": 10,
+      "path": "lib/stripe_options.dart",
+      "total_score": 2.0377
+    },
+    {
+      "rank": 11,
+      "path": "lib/service_locator.dart",
+      "total_score": 1.9512
+    },
+    {
+      "rank": 12,
+      "path": "lib/data/models/payment.dart",
+      "total_score": 1.5
+    },
+    {
+      "rank": 13,
+      "path": "lib/presentation/widgets/receipt_card.dart",
+      "total_score": 0.7778
+    },
+    {
+      "rank": 14,
+      "path": "lib/presentation/pages/order_history_page.dart",
+      "total_score": 0.2165
+    }
+  ]
+}

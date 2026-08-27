@@ -1,0 +1,82 @@
+{
+  "commit": "synthetic-fixture",
+  "files": [
+    {
+      "content": "import 'package:stripe_sdk/stripe_sdk.dart';\nimport 'package:shopapp/data/models/payment.dart';\n\nclass StripePaymentGateway {\n  final StripeClient client;\n\n  StripePaymentGateway({required this.client});\n\n  Future<Payment> submit(double amount) async {\n    var intent = await client.createIntent(amount);\n    return Payment.fromMap(intent.data());\n  }\n}\n",
+      "path": "lib/data/gateways/stripe_payment_gateway.dart",
+      "sha": "f212f2e4581fcf843b3a943fe65c47997fb7332c"
+    },
+    {
+      "content": "class Payment {\n  final String id;\n  final double amount;\n  final String status;\n\n  Payment({required this.id, required this.amount, required this.status});\n\n  factory Payment.fromMap(Map<String, dynamic> map) {\n    return Payment(id: map['id'], amount: map['amount'], status: map['status']);\n  }\n}\n",
+      "path": "lib/data/models/payment.dart",
+      "sha": "32688ebe83eb8c78e611f98f2b53e4eef1ae244e"
+    },
+    {
+      "content": "import 'package:shopapp/data/gateways/stripe_payment_gateway.dart';\nimport 'package:shopapp/data/models/payment.dart';\nimport 'package:shopapp/domain/repositories/payment_repository.dart';\n\nclass PaymentRepositoryImpl implements PaymentRepository {\n  final StripePaymentGateway gateway;\n\n  PaymentRepositoryImpl(this.gateway);\n\n  @override\n  Future<Payment> charge(double amount) {\n    return gateway.submit(amount);\n  }\n}\n",
+      "path": "lib/data/repositories/payment_repository_impl.dart",
+      "sha": "9978285499e31cac458e008cf1742bc5efb8461f"
+    },
+    {
+      "content": "import 'package:shopapp/data/models/payment.dart';\n\nabstract class PaymentRepository {\n  Future<Payment> charge(double amount);\n}\n",
+      "path": "lib/domain/repositories/payment_repository.dart",
+      "sha": "9a248b1e7e330d68e598b0879e465617e0c8676c"
+    },
+    {
+      "content": "import 'package:shopapp/data/models/payment.dart';\nimport 'package:shopapp/domain/repositories/payment_repository.dart';\n\nclass SubmitPayment {\n  final PaymentRepository repository;\n\n  SubmitPayment(this.repository);\n\n  Future<Payment> call(double amount) async {\n    return await repository.charge(amount);\n  }\n}\n",
+      "path": "lib/domain/usecases/submit_payment.dart",
+      "sha": "dd09bb784592a05d7c96b17a1cde092bf116152b"
+    },
+    {
+      "content": "import 'package:flutter/material.dart';\nimport 'package:flutter_bloc/flutter_bloc.dart';\nimport 'package:stripe_sdk/stripe_sdk.dart';\nimport 'package:shopapp/stripe_options.dart';\nimport 'package:shopapp/service_locator.dart';\nimport 'package:shopapp/presentation/bloc/payment_bloc.dart';\nimport 'package:shopapp/presentation/bloc/payment_event.dart';\nimport 'package:shopapp/presentation/pages/checkout_screen.dart';\n\nvoid main() async {\n  WidgetsFlutterBinding.ensureInitialized();\n  await Stripe.initialize(options: DefaultStripeOptions.currentPlatform);\n  initLocator();\n  runApp(const MyApp());\n}\n\nclass MyApp extends StatelessWidget {\n  const MyApp({super.key});\n\n  @override\n  Widget build(BuildContext context) {\n    return BlocProvider(\n      create: (_) => getIt<PaymentBloc>()..add(SubmitPressed()),\n      child: MaterialApp(home: CheckoutScreen()),\n    );\n  }\n}\n",
+      "path": "lib/main.dart",
+      "sha": "a8ea5273939a12e805641671b79e5eaeaab1e231"
+    },
+    {
+      "content": "import 'package:flutter_bloc/flutter_bloc.dart';\nimport 'package:shopapp/domain/usecases/submit_payment.dart';\nimport 'package:shopapp/presentation/bloc/payment_event.dart';\nimport 'package:shopapp/presentation/bloc/payment_state.dart';\n\nclass PaymentBloc extends Bloc<PaymentEvent, PaymentState> {\n  final SubmitPayment submitPayment;\n\n  PaymentBloc({required this.submitPayment}) : super(PaymentPending()) {\n    on<SubmitPressed>((event, emit) async {\n      emit(PaymentPending());\n      try {\n        final payment = await submitPayment.call(10.0);\n        emit(PaymentSuccess(payment));\n      } catch (e) {\n        emit(PaymentFailed(e.toString()));\n      }\n    });\n  }\n}\n",
+      "path": "lib/presentation/bloc/payment_bloc.dart",
+      "sha": "256019988e1cfa5db1fc1802c0d1fab09d9a373a"
+    },
+    {
+      "content": "abstract class PaymentEvent {}\n\nclass SubmitPressed extends PaymentEvent {}\n",
+      "path": "lib/presentation/bloc/payment_event.dart",
+      "sha": "ea2bdff0909efd3cfb1a9191d654c0a588b27ca8"
+    },
+    {
+      "content": "import 'package:shopapp/data/models/payment.dart';\n\nabstract class PaymentState {}\n\nclass PaymentPending extends PaymentState {}\n\nclass PaymentSuccess extends PaymentState {\n  final Payment payment;\n  PaymentSuccess(this.payment);\n}\n\nclass PaymentFailed extends PaymentState {\n  final String message;\n  PaymentFailed(this.message);\n}\n",
+      "path": "lib/presentation/bloc/payment_state.dart",
+      "sha": "6965078a1a33d5590b1dc8e132246d77f49f7f85"
+    },
+    {
+      "content": "import 'package:flutter/material.dart';\nimport 'package:flutter_bloc/flutter_bloc.dart';\nimport 'package:shopapp/presentation/bloc/payment_bloc.dart';\nimport 'package:shopapp/presentation/bloc/payment_state.dart';\nimport 'package:shopapp/presentation/widgets/receipt_card.dart';\n\nclass CheckoutScreen extends StatelessWidget {\n  @override\n  Widget build(BuildContext context) {\n    return Scaffold(\n      appBar: AppBar(title: Text('Checkout')),\n      body: BlocBuilder<PaymentBloc, PaymentState>(\n        builder: (context, state) {\n          if (state is PaymentPending) {\n            return Center(child: CircularProgressIndicator());\n          } else if (state is PaymentSuccess) {\n            return ReceiptCard(payment: state.payment);\n          } else if (state is PaymentFailed) {\n            return Center(child: Text('error : ${state.message}'));\n          }\n          return Container();\n        },\n      ),\n    );\n  }\n}\n",
+      "path": "lib/presentation/pages/checkout_screen.dart",
+      "sha": "f5a7bd1c1d07c035a110e3e7ef608c2e927d9705"
+    },
+    {
+      "content": "import 'package:flutter/material.dart';\nimport 'package:shopapp/data/models/payment.dart';\n\nclass OrderHistoryPage extends StatelessWidget {\n  final List<Payment> history;\n  const OrderHistoryPage({required this.history});\n\n  @override\n  Widget build(BuildContext context) {\n    return ListView.builder(\n      itemCount: history.length,\n      itemBuilder: (context, index) => ListTile(\n        title: Text(history[index].id),\n      ),\n    );\n  }\n}\n",
+      "path": "lib/presentation/pages/order_history_page.dart",
+      "sha": "b9b32877d328d261265578d67eea7ed437192b6f"
+    },
+    {
+      "content": "import 'package:flutter/material.dart';\nimport 'package:shopapp/data/models/payment.dart';\n\nclass ReceiptCard extends StatelessWidget {\n  final Payment payment;\n  const ReceiptCard({required this.payment});\n\n  @override\n  Widget build(BuildContext context) {\n    return Card(\n      child: ListTile(\n        title: Text('Receipt'),\n        subtitle: Text(payment.amount.toString()),\n      ),\n    );\n  }\n}\n",
+      "path": "lib/presentation/widgets/receipt_card.dart",
+      "sha": "f37c6cfb77e70f91b7abf982890653924a2a2dbb"
+    },
+    {
+      "content": "import 'package:get_it/get_it.dart';\nimport 'package:stripe_sdk/stripe_sdk.dart';\nimport 'package:shopapp/data/gateways/stripe_payment_gateway.dart';\nimport 'package:shopapp/data/repositories/payment_repository_impl.dart';\nimport 'package:shopapp/domain/repositories/payment_repository.dart';\nimport 'package:shopapp/domain/usecases/submit_payment.dart';\nimport 'package:shopapp/presentation/bloc/payment_bloc.dart';\n\nGetIt getIt = GetIt.instance;\n\nvoid initLocator() {\n  getIt.registerLazySingleton<StripeClient>(() => StripeClient.instance);\n  getIt.registerLazySingleton<StripePaymentGateway>(\n      () => StripePaymentGateway(client: getIt<StripeClient>()));\n  getIt.registerLazySingleton<PaymentRepository>(\n      () => PaymentRepositoryImpl(getIt<StripePaymentGateway>()));\n  getIt.registerLazySingleton<SubmitPayment>(\n      () => SubmitPayment(getIt<PaymentRepository>()));\n  getIt.registerFactory(() => PaymentBloc(submitPayment: getIt<SubmitPayment>()));\n}\n",
+      "path": "lib/service_locator.dart",
+      "sha": "1401e2bc0b4e80c62836bfe7508fb5d707a77763"
+    },
+    {
+      "content": "// File generated by the Stripe CLI. Do not edit.\nimport 'package:stripe_sdk/stripe_sdk.dart';\n\nclass DefaultStripeOptions {\n  static StripeOptions get currentPlatform {\n    return android;\n  }\n\n  static const StripeOptions android = StripeOptions(\n    publishableKey: 'pk_test_android',\n    merchantId: 'acct_android',\n    stripeAccount: 'acct_android',\n  );\n\n  static const StripeOptions ios = StripeOptions(\n    publishableKey: 'pk_test_ios',\n    merchantId: 'acct_ios',\n    stripeAccount: 'acct_ios',\n  );\n\n  static const StripeOptions web = StripeOptions(\n    publishableKey: 'pk_test_web',\n    merchantId: 'acct_web',\n    stripeAccount: 'acct_web',\n  );\n}\n",
+      "path": "lib/stripe_options.dart",
+      "sha": "d1ede10e2b02ef28f31a376b1379850cca112be5"
+    }
+  ],
+  "issue": {
+    "body": "After pressing pay, the checkout screen keeps showing the pending spinner and never shows the receipt.\n\nPayments go through Stripe. The problem seems to happen while the payment is submitted through the gateway, the repository and the bloc.",
+    "number": 1,
+    "title": "Checkout screen hangs on the pending spinner"
+  },
+  "owner": "synthetic",
+  "repo": "checkout-app"
+}
