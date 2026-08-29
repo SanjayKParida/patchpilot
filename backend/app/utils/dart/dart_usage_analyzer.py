@@ -138,7 +138,7 @@ class DartUsageAnalyzer:
         dart_files = [
             file
             for file in files
-            if self.structure._normalize_path(
+            if self.structure.normalize_path(
                 file.get("path", "")
             ).endswith(".dart")
         ]
@@ -151,7 +151,7 @@ class DartUsageAnalyzer:
 
         for symbol, owners in symbol_index.items():
             declared_in[symbol] = {
-                self.structure._normalize_path(owner["path"])
+                self.structure.normalize_path(owner["path"])
                 for owner in owners
             }
 
@@ -212,16 +212,16 @@ class DartUsageAnalyzer:
         dart_files = [
             file
             for file in files
-            if self.structure._normalize_path(
+            if self.structure.normalize_path(
                 file.get("path", "")
             ).endswith(".dart")
         ]
 
         for file in dart_files:
-            path = self.structure._normalize_path(
+            path = self.structure.normalize_path(
                 file.get("path", "")
             )
-            code = self.structure._mask_comments_and_strings(
+            code = self.structure.mask_source(
                 file.get("content", "")
             )
 
@@ -337,7 +337,7 @@ class DartUsageAnalyzer:
         file_by_path,
         declared_in,
     ):
-        source_path = self.structure._normalize_path(
+        source_path = self.structure.normalize_path(
             file.get("path", "")
         )
 
@@ -361,7 +361,7 @@ class DartUsageAnalyzer:
             if resolved is None:
                 continue
 
-            resolved_path = self.structure._normalize_path(
+            resolved_path = self.structure.normalize_path(
                 resolved["path"]
             )
 
@@ -401,7 +401,7 @@ class DartUsageAnalyzer:
         # Where are those symbols actually referenced?
         # -----------------------------------------------------
 
-        code = self.structure._mask_comments_and_strings(content)
+        code = self.structure.mask_source(content)
 
         usages = []
         seen = set()

@@ -272,3 +272,110 @@ def test_a_method_name_used_everywhere_is_dropped(locator):
     ]
 
     assert locator.resolve(["build"], files=widgets) == []
+
+
+# ============================================================
+# CLASS vs CONSTRUCTOR, TESTS vs PRODUCT
+# ============================================================
+
+def test_a_class_wins_over_its_constructor_in_the_same_file(locator):
+    """
+    `const TaskLoaded(...)` used to index as a second declaration of
+    TaskLoaded. The class is the declaration a developer jumps to.
+    """
+
+    file = _file(
+        "lib/presentation/bloc/task_state.dart",
+        "class TaskLoaded extends TaskState {\n"
+        "  const TaskLoaded({required this.tasks});\n"
+        "}\n",
+    )
+
+    result = locator.resolve(["TaskLoaded"], files=[file])
+
+    assert result == [
+        {
+            "symbol": "TaskLoaded",
+            "path": file["path"],
+            "line": 1,
+            "kind": "class",
+        }
+    ]
+
+    index = locator.build_index([file])
+    assert [entry["kind"] for entry in index["TaskLoaded"]] == ["class"]
+
+
+def test_a_test_constructor_call_does_not_hide_the_product_class(
+    locator,
+):
+    """
+    `const TaskLoading()` in a test is a call, not a declaration.
+    Even if it were indexed, the product class is the unique site.
+    """
+
+    product = _file(
+        "lib/presentation/bloc/task_state.dart",
+        "class TaskLoading extends TaskState {\n"
+        "  const TaskLoading();\n"
+        "}\n",
+    )
+    test = _file(
+        "test/presentation/bloc/task_bloc_test.dart",
+        "void main() {\n"
+        "  test('stays loading', () {\n"
+        "    expect(state, const TaskLoading());\n"
+        "  });\n"
+        "}\n",
+    )
+
+    result = locator.resolve(
+        ["TaskLoading"],
+        files=[product, test],
+    )
+
+    assert result == [
+        {
+            "symbol": "TaskLoading",
+            "path": product["path"],
+            "line": 1,
+            "kind": "class",
+        }
+    ]
+
+
+def test_genuine_product_ambiguity_is_still_omitted(locator):
+    """
+    Two product files declaring the same name cannot be told apart
+    from the name alone. Collapsing constructors and tests must not
+    start guessing here.
+    """
+
+    files = [
+        _file("lib/a.dart", "class Shared {}\n"),
+        _file("lib/b.dart", "class Shared {}\n"),
+    ]
+
+    assert locator.resolve(["Shared"], files=files) == []
+
+
+def test_a_unique_method_still_resolves(locator):
+    """
+    The constructor/test collapse must not disturb ordinary method
+    resolution: a unique function with a real return type still
+    points at its declaration, never a call site.
+    """
+
+    result = locator.resolve(
+        ["fetchRemote"],
+        files=[CALLER, SOURCE],
+    )
+
+    assert result == [
+        {
+            "symbol": "fetchRemote",
+            "path": "lib/data/remote.dart",
+            "line": 2,
+            "kind": "function",
+        }
+    ]

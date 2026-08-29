@@ -191,7 +191,7 @@ class DartEvidenceAnalyzer:
         for file in files:
 
             path = file.get("path")
-            normalized = self.usage_analyzer.structure._normalize_path(
+            normalized = self.usage_analyzer.structure.normalize_path(
                 path or ""
             )
 
@@ -278,7 +278,7 @@ class DartEvidenceAnalyzer:
                         base,
                     )
 
-        normalize = self.usage_analyzer.structure._normalize_path
+        normalize = self.usage_analyzer.structure.normalize_path
 
         file_by_path = {
             normalize(file.get("path", "")): file

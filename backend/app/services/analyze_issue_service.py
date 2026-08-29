@@ -405,10 +405,19 @@ class AnalyzeIssueService:
 
         ranked = []
 
+        # Score descending, then path ascending.
+        #
+        # The path is a tie-break, not a preference: Python randomises
+        # string hashing per process, so without it equal-scoring
+        # files change places between runs and the same analysis
+        # reorders itself. Sorting on the negated score rather than
+        # reverse=True keeps the tie-break ascending.
         sorted_scores = sorted(
             final_scores.items(),
-            key=lambda item: item[1].get("total_score", 0),
-            reverse=True
+            key=lambda item: (
+                -item[1].get("total_score", 0),
+                item[1]["path"],
+            ),
         )
 
         for index, (

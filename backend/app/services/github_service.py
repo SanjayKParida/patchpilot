@@ -61,8 +61,52 @@ class GithubService:
     def get_repository(self, owner: str, repo: str):
         return self._request(f"https://api.github.com/repos/{owner}/{repo}")
 
-    def get_issues(self, owner: str, repo: str):
-        return self._request(f"https://api.github.com/repos/{owner}/{repo}/issues")
+    def get_issues(
+        self,
+        owner: str,
+        repo: str,
+        state: str = "open",
+        per_page: int = 30,
+        page: int = 1,
+        since: str | None = None,
+    ):
+        """
+        Issues for a repository.
+
+        Defaults match GitHub's own: open issues only, newest first.
+        Candidate discovery needs `state="closed"`, since an issue with
+        a fix is by definition closed.
+        """
+        url = (
+            f"https://api.github.com/repos/{owner}/{repo}/issues"
+            f"?state={state}&per_page={per_page}&page={page}"
+        )
+
+        if since:
+            url += f"&since={since}"
+
+        return self._request(url)
+
+    def get_issue_timeline(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        per_page: int = 100,
+    ):
+        """
+        Timeline events for an issue.
+
+        This is where GitHub records what actually closed an issue:
+        `closed` events carry a `commit_id`, and `referenced` events
+        link commits that mention it. Commit messages alone are a
+        weaker signal — the timeline is the repository's own account
+        of the link.
+        """
+        return self._request(
+            f"https://api.github.com/repos/{owner}/{repo}"
+            f"/issues/{issue_number}/timeline?per_page={per_page}"
+        )
     
     def get_repository_files(self, owner: str, repo: str):
         return self._request(f"https://api.github.com/repos/{owner}/{repo}/contents")
@@ -75,8 +119,39 @@ class GithubService:
             f"https://api.github.com/repos/{owner}/{repo}/commits/{branch}"
         )   
 
-    def get_repository_source_files(self, owner: str, repo: str):
-        files = self.get_repository_tree(owner, repo)
+    def compare_commits(
+        self,
+        owner: str,
+        repo: str,
+        base: str,
+        head: str,
+    ):
+        """
+        Diff between two commits.
+
+        `files` in the response is the changed-file list, each entry
+        carrying `filename`, `status`, and `previous_filename` for
+        renames.
+        """
+        return self._request(
+            f"https://api.github.com/repos/{owner}/{repo}"
+            f"/compare/{base}...{head}"
+        )
+
+    def get_repository_source_files(
+        self,
+        owner: str,
+        repo: str,
+        ref: str | None = None,
+    ):
+        """
+        Source files for a repository at `ref`.
+
+        `ref` may be a commit SHA, branch or tag. Omit it for the
+        default branch, which is the behaviour every existing caller
+        relies on.
+        """
+        files = self.get_repository_tree(owner, repo, ref=ref)
 
         source_files = []
 
@@ -105,13 +180,27 @@ class GithubService:
         )     
         return base64.b64decode(blob['content']).decode('utf-8')
 
-    def get_repository_tree(self, owner: str, repo: str):
+    def get_repository_tree(
+        self,
+        owner: str,
+        repo: str,
+        ref: str | None = None,
+    ):
+            """
+            File tree for a repository at `ref` (default branch when
+            omitted).
+
+            The tree is resolved from the commit `ref` points at, so
+            a caller asking for an old commit gets that commit's
+            files -- not the current ones.
+            """
             files = []
 
-            repository = self.get_repository(owner, repo)
-            default_branch = repository["default_branch"]
+            if ref is None:
+                repository = self.get_repository(owner, repo)
+                ref = repository["default_branch"]
 
-            commit = self.get_commit(owner, repo, default_branch)
+            commit = self.get_commit(owner, repo, ref)
 
             tree_sha = commit["commit"]["tree"]["sha"]
 

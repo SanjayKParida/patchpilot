@@ -42,7 +42,7 @@ class DartStructureAnalyzer:
     )
 
     def extract_imports(self, content):
-        code = self._strip_comments(content)
+        code = self.strip_comments(content)
         return [
             match.group("uri")
             for match in self.IMPORT_PATTERN.finditer(code)
@@ -74,7 +74,7 @@ class DartStructureAnalyzer:
         file_by_path=None,
         symbol_index=None,
     ):
-        source_path = self._normalize_path(file.get("path", ""))
+        source_path = self.normalize_path(file.get("path", ""))
         if not source_path.endswith(".dart"):
             return []
 
@@ -95,7 +95,7 @@ class DartStructureAnalyzer:
             if resolved is None:
                 continue
 
-            target_path = self._normalize_path(resolved["path"])
+            target_path = self.normalize_path(resolved["path"])
             if target_path == source_path:
                 continue
 
@@ -123,7 +123,7 @@ class DartStructureAnalyzer:
                 if resolved is None:
                     continue
 
-                target_path = self._normalize_path(resolved["path"])
+                target_path = self.normalize_path(resolved["path"])
                 if target_path == source_path:
                     continue
 
@@ -155,7 +155,7 @@ class DartStructureAnalyzer:
                 return None
 
             _, relative_path = package_path.split("/", 1)
-            target_path = self._normalize_path(
+            target_path = self.normalize_path(
                 posixpath.join("lib", relative_path)
             )
             return file_by_path.get(target_path)
@@ -163,7 +163,7 @@ class DartStructureAnalyzer:
         if not source_path or import_path.startswith("/"):
             return None
 
-        target_path = self._normalize_path(
+        target_path = self.normalize_path(
             posixpath.join(
                 posixpath.dirname(source_path),
                 import_path,
@@ -193,7 +193,7 @@ class DartStructureAnalyzer:
         imported_candidates = [
             candidate
             for candidate in candidates
-            if self._normalize_path(candidate["path"]) in imported_paths
+            if self.normalize_path(candidate["path"]) in imported_paths
         ]
         if len(imported_candidates) == 1:
             return imported_candidates[0]
@@ -210,7 +210,7 @@ class DartStructureAnalyzer:
         dart_files = [
             file
             for file in files
-            if self._normalize_path(
+            if self.normalize_path(
                 file.get("path", "")
             ).endswith(".dart")
         ]
@@ -231,7 +231,7 @@ class DartStructureAnalyzer:
         return self._deduplicate(relationships)
 
     def _extract_relationship_types(self, content, relationship_type):
-        code = self._mask_comments_and_strings(content)
+        code = self.mask_source(content)
         names = []
 
         for declaration in self.CLASS_DECLARATION_PATTERN.finditer(code):
@@ -275,7 +275,7 @@ class DartStructureAnalyzer:
 
     def _build_file_index(self, files):
         return {
-            self._normalize_path(file.get("path", "")): file
+            self.normalize_path(file.get("path", "")): file
             for file in files
             if file.get("path")
         }
@@ -284,7 +284,7 @@ class DartStructureAnalyzer:
         symbol_index = defaultdict(list)
 
         for file in files:
-            code = self._mask_comments_and_strings(
+            code = self.mask_source(
                 file.get("content", "")
             )
             for match in self.TYPE_DECLARATION_PATTERN.finditer(code):
@@ -293,7 +293,14 @@ class DartStructureAnalyzer:
         return symbol_index
 
     @staticmethod
-    def _normalize_path(path):
+    def normalize_path(path):
+        """
+        Canonical repository path: forward slashes, no redundant parts.
+
+        Public because the whole Dart pack compares paths and every
+        comparison has to agree on the form.
+        """
+
         normalized = posixpath.normpath(path.replace("\\", "/"))
         return "" if normalized == "." else normalized
 
@@ -316,12 +323,44 @@ class DartStructureAnalyzer:
         return unique
 
     @classmethod
-    def _strip_comments(cls, content):
+    def strip_comments(cls, content):
+        """Source with comments blanked, string literals intact."""
+
         return cls._scan_source(content, mask_strings=False)
 
     @classmethod
-    def _mask_comments_and_strings(cls, content):
+    def mask_source(cls, content):
+        """
+        Source with comments AND string literals blanked, positions
+        preserved so line and column numbers still line up.
+
+        Public because every analyzer in the Dart pack needs it before
+        it can trust a match: a brace inside a string must not close a
+        declaration, and a class name inside a comment is not a
+        declaration.
+        """
+
         return cls._scan_source(content, mask_strings=True)
+
+    # ---------------------------------------------------------
+    # Deprecated private spellings.
+    #
+    # These were private helpers that the rest of the Dart pack
+    # reached into anyway. They are public now; the aliases remain so
+    # no caller breaks, and carry no behaviour of their own.
+    # ---------------------------------------------------------
+
+    @classmethod
+    def _strip_comments(cls, content):
+        return cls.strip_comments(content)
+
+    @classmethod
+    def _mask_comments_and_strings(cls, content):
+        return cls.mask_source(content)
+
+    @staticmethod
+    def _normalize_path(path):
+        return DartStructureAnalyzer.normalize_path(path)
 
     @staticmethod
     def _scan_source(content, *, mask_strings):

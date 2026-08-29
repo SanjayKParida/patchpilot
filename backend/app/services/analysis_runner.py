@@ -118,29 +118,7 @@ class AnalysisRunner:
             # "View root cause" must land on the defect, and the first
             # SUPPORTING symbol the model happened to mention is not
             # that — it is usually a type the defect merely refers to.
-            locator = DartSymbolLocator()
-
-            # Index product code only. Retrieval and evidence already
-            # exclude tests; the locator must too, or a name declared
-            # once in `lib/` and once in a test looks ambiguous and is
-            # dropped. `main` is exactly that case.
-            search = RepositorySearchService()
-
-            index = locator.build_index([
-                file
-                for file in files
-                if search.is_candidate_file(file)
-            ])
-
-            diagnosis["root_cause_locations"] = locator.resolve(
-                diagnosis.get("root_cause_symbols"),
-                index=index,
-            )
-
-            diagnosis["locations"] = locator.resolve(
-                diagnosis.get("symbols"),
-                index=index,
-            )
+            self.attach_locations(diagnosis, files)
 
             result["diagnosis"] = diagnosis
 
@@ -164,6 +142,42 @@ class AnalysisRunner:
             )
 
         return issue
+
+    @staticmethod
+    def attach_locations(diagnosis, files):
+        """
+        Resolve the symbols a diagnosis named to file and line.
+
+        Shared with the offline benchmark runner so both take exactly
+        the same path; a benchmark measuring different behaviour from
+        production measures nothing.
+        """
+
+        locator = DartSymbolLocator()
+
+        # Index product code only. Retrieval and evidence already
+        # exclude tests; the locator must too, or a name declared
+        # once in `lib/` and once in a test looks ambiguous and is
+        # dropped. `main` is exactly that case.
+        search = RepositorySearchService()
+
+        index = locator.build_index([
+            file
+            for file in files
+            if search.is_candidate_file(file)
+        ])
+
+        diagnosis["root_cause_locations"] = locator.resolve(
+            diagnosis.get("root_cause_symbols"),
+            index=index,
+        )
+
+        diagnosis["locations"] = locator.resolve(
+            diagnosis.get("symbols"),
+            index=index,
+        )
+
+        return diagnosis
 
     @staticmethod
     def _sources(analysis, files):

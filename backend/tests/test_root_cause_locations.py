@@ -282,8 +282,8 @@ def test_an_unresolvable_root_cause_yields_no_location():
 def test_a_test_file_must_not_make_a_symbol_ambiguous():
     """
     `main` is declared in lib/main.dart and again in a widget test.
-    Indexing tests would make the real entry point unresolvable, so
-    the runner indexes product code only.
+    A test-file match must not make the real entry point unresolvable.
+    The locator prefers the product declaration.
     """
 
     from app.services.repository_search_service import (
@@ -306,7 +306,14 @@ def test_a_test_file_must_not_make_a_symbol_ambiguous():
     locator = DartSymbolLocator()
     search = RepositorySearchService()
 
-    assert locator.resolve(["main"], files=files) == []
+    assert locator.resolve(["main"], files=files) == [
+        {
+            "symbol": "main",
+            "path": "lib/main.dart",
+            "line": 1,
+            "kind": "function",
+        }
+    ]
 
     product = [f for f in files if search.is_candidate_file(f)]
 
