@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "summary": "filter active tasks as incomplete",
+  "reasoning": "Active and completed used the same isCompleted predicate.",
+  "confidence": 1.0,
+  "warnings": [],
+  "errors": [],
+  "files": [
+    {
+      "path": "lib/domain/usecases/get_filtered_tasks.dart",
+      "language": "dart",
+      "hunks": [
+        {
+          "start_line": 25,
+          "end_line": 25,
+          "old_text": "        return tasks.where((task) => task.isCompleted).toList();",
+          "new_text": "        return tasks.where((task) => !task.isCompleted).toList();"
+        }
+      ]
+    }
+  ]
+}

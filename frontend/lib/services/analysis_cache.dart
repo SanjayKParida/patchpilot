@@ -17,8 +17,16 @@ class AnalysisCache {
   /// to the snapshot that analysis ran against.
   final Map<String, FileSource> _files = {};
 
-  static String keyFor(String owner, String repo, int issueNumber) =>
-      '$owner/$repo#$issueNumber';
+  static String keyFor(
+    String owner,
+    String repo,
+    int issueNumber, {
+    String? ref,
+  }) {
+    final pinned = (ref ?? '').trim();
+    if (pinned.isEmpty) return '$owner/$repo#$issueNumber';
+    return '$owner/$repo#$issueNumber@$pinned';
+  }
 
   // ---------------------------------------------------------
   // Analyses

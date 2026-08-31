@@ -8,6 +8,7 @@ import '../services/api_client.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/follow_up.dart';
+import '../widgets/patch_panel.dart';
 import '../widgets/why_this_file.dart';
 import 'code_viewer_screen.dart';
 
@@ -21,6 +22,7 @@ class DiagnosisScreen extends StatefulWidget {
   final AnalysisCache cache;
   final Repository repository;
   final Issue issue;
+  final String? ref;
   final VoidCallback onBack;
 
   const DiagnosisScreen({
@@ -30,6 +32,7 @@ class DiagnosisScreen extends StatefulWidget {
     required this.repository,
     required this.issue,
     required this.onBack,
+    this.ref,
   });
 
   @override
@@ -50,6 +53,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
         widget.repository.owner,
         widget.repository.repo,
         widget.issue.number,
+        ref: widget.ref,
       );
 
   @override
@@ -95,6 +99,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
         owner: widget.repository.owner,
         repo: widget.repository.repo,
         issueNumber: widget.issue.number,
+        ref: widget.ref,
       );
 
       if (!mounted) return;
@@ -300,6 +305,15 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
               if (analysis.status == AnalysisStatus.completed &&
                   analysis.diagnosis != null) ...[
                 const SizedBox(height: 28),
+                PatchPanel(
+                  api: widget.api,
+                  analysisId: analysis.id,
+                  commitSha: analysis.commitSha,
+                  requestedRef: widget.ref,
+                  onOpenFile: (path, {int? line, String? reason}) =>
+                      _openFile(path, line: line, reason: reason),
+                ),
+                const SizedBox(height: 28),
                 FollowUpPanel(
                   api: widget.api,
                   analysisId: analysis.id,
@@ -311,6 +325,19 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
         ),
       ),
     );
+  }
+
+  String? get _analyzedCommit {
+    final sha = _analysis?.commitSha?.trim();
+    if (sha != null && sha.isNotEmpty) return sha;
+    final requested = widget.ref?.trim();
+    if (requested != null && requested.isNotEmpty) return requested;
+    return null;
+  }
+
+  static String _shortSha(String value) {
+    if (value.length <= 12) return value;
+    return value.substring(0, 12);
   }
 
   Widget _buildIssueHeader() {
@@ -348,6 +375,20 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
                   ),
                 ],
               ),
+              if (_analyzedCommit != null) ...[
+                const SizedBox(height: 6),
+                Tooltip(
+                  message: _analyzedCommit!,
+                  child: Text(
+                    'Analyzed at ${_shortSha(_analyzedCommit!)}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontFamily: AppTheme.mono,
+                      color: AppTheme.purple,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 widget.issue.title,

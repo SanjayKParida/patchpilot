@@ -1,0 +1,32 @@
+{
+  "owner": "SanjayKParida",
+  "repo": "patchpilot-diagnosis-demo",
+  "issue_number": 2,
+  "fix_commit": "f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c",
+  "snapshot": "evalutation/fixtures/empty_state_pre_fix.json",
+  "title": "Deleting the last task shows an error instead of the empty state",
+  "body": "## Summary\n\nWhen the final task is deleted, the application shows an error screen\ninstead of displaying the empty task list state.\n\n## Steps to reproduce\n\n1. Launch the application.\n2. Delete tasks one by one.\n3. Delete the final remaining task.\n4. Observe the screen.\n\n## Expected behavior\n\nThe task list should become empty and display a message such as\n\"No tasks yet\".\n\n## Actual behavior\n\nThe application displays:\n\n> Failed to load tasks\n\nThe error also reports that no tasks were found in local storage.\n\n## Additional context\n\n- Deleting tasks works correctly until the final task.\n- The problem only occurs when zero tasks remain.\n- Restarting the application restores the seeded tasks.\n- The issue is unrelated to refresh.",
+  "signals_note": "Captured once at case generation and pinned. Signal extraction is a model call and varies between runs, which makes ranking measurements irreproducible. Review these terms; edit them if they are wrong. Do not remove the pinning.",
+  "signals": [
+    {
+      "term": "task",
+      "type": "domain"
+    },
+    {
+      "term": "empty state",
+      "type": "ui"
+    },
+    {
+      "term": "local storage",
+      "type": "data"
+    },
+    {
+      "term": "Failed to load tasks",
+      "type": "error"
+    },
+    {
+      "term": "seeded tasks",
+      "type": "data"
+    }
+  ]
+}

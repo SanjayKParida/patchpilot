@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "summary": "emit TaskLoaded after a successful refresh",
+  "reasoning": "The refresh success path never left TaskLoading.",
+  "confidence": 1.0,
+  "warnings": [],
+  "errors": [],
+  "files": [
+    {
+      "path": "lib/presentation/bloc/task_bloc.dart",
+      "language": "dart",
+      "hunks": [
+        {
+          "start_line": 56,
+          "end_line": 57,
+          "old_text": "        // Update the cached filter before handing the results back to the UI.\n        _currentFilter = _currentFilter;",
+          "new_text": "        emit(TaskLoaded(tasks: tasks, filter: _currentFilter));"
+        }
+      ]
+    }
+  ]
+}

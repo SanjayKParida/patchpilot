@@ -19,7 +19,9 @@ GitHub issue + repository
     → rank the best candidate files
     → give focused context to an LLM
     → diagnose root cause + propose a fix
-    → (later) apply in isolation + verify with tests
+    → ContextBuilder → PatchGenerator → PatchValidator
+    → developer review / local approval
+    → (later) GitHub branch / commit / PR
 ```
 
 ### Core principle
@@ -46,7 +48,7 @@ GitHub issue + repository
 ```text
 ████████████░░░░░░░░  retrieval / ranking MVP
 ████████░░░░░░░░░░░░  LLM diagnosis + structured fix
-░░░░░░░░░░░░░░░░░░░░  apply / verify loop
+████░░░░░░░░░░░░░░░░  apply / verify loop
 ```
 
 ### Working today
@@ -61,28 +63,41 @@ GitHub issue + repository
 - `IssueSignalExtractionService` — production signals from issue text via LLM
 - `IssueDiagnosisService` — LLM diagnosis from the analysis package
 - `IssueFollowUpService` — one question answered against a finished analysis
-- `AnalysisRunner` — fetch → analyze → diagnose, for the HTTP layer
-- FastAPI: `/health`, repositories, analyses, per-file source, questions
-- `frontend/` — Flutter web client
+- `AnalysisRunner` — fetch → analyze → diagnose, for the HTTP layer. `POST /api/analyses` accepts optional `ref`/`commit`; the resolved SHA is stored as `commit_sha`. Language source at that SHA feeds ranking/diagnosis; a separate full tracked-file `snapshot` at the same SHA is kept for PatchValidator only.
+- GitHub App user authorization + HttpOnly PatchPilot session. The demo repository is usable without login. User repositories require Connect GitHub and an App installation grant. Delivery uses installation tokens for granted repos and never a visitor-global write token.
+- FastAPI: `/health`, auth, repositories, analyses, per-file source, questions, on-demand patch generate/validate/approve/deliver
+- `frontend/` — Flutter web client with demo-first landing, diagnosis + patch review
 
 ### Stub / missing
 
-- No apply-fix / run-tests workspace yet
+- Sessions and analyses are in-memory: single worker only, lost on restart
 - `worker/` is empty
-- Analyses are held in memory: single worker only, lost on restart
 
 ---
 
 ## 2b. The web client
 
 ```text
-Dashboard  →  Issues  →  Diagnosis  →  Code viewer
+Dashboard (Demo + Connect GitHub)  →  Issues  →  Diagnosis  →  Patch review  →  Code viewer
 ```
 
 The product's claim is that a diagnosis is grounded in real code, so
 **nothing in the diagnosis is a dead end.** Ranked files, individual
 evidence rows, cited files and the suggested fix all open the source they
 refer to, and evidence rows land on the exact line they came from.
+
+After a completed diagnosis, `PatchPanel` is a separate review section
+on the same screen: generate a proposal, inspect the file-grouped diff,
+validate, approve on the server, then create a draft PR. Generation
+success is never treated as a working patch. Approval does not create a
+branch or PR; delivery does, and only for a repository the session is
+authorized to write.
+
+An analysis can pin a repository **ref/commit**. Leave it blank to
+analyse current HEAD. An explicit SHA is resolved before the job starts
+and shown on the diagnosis screen as "Analyzed at …". The issues list
+has an optional commit field; the demo's Active filter issue (#3) can
+be analysed at `f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c`.
 
 Each ranked file carries what put it there:
 
@@ -301,11 +316,14 @@ False structural edges contaminate ranking more than missing edges.
 
 | Module | Role |
 |--------|------|
-| `GithubService` | Auth, issues, tree, blobs, source file download |
+| `GithubService` | Auth, issues, tree, blobs, source file download; `resolve_commit` pins a ref to a SHA |
 | `AnalyzeIssueService` | Orchestrates signals → evidence → search → rank into an analysis package |
 | `IssueSignalExtractionService` | Production: issue text → `{term, type}` signals via LLM |
 | `IssueSignalService` | Hardcoded control/reference signals (deterministic ranking eval) |
 | `IssueDiagnosisService` | Analysis package → structured LLM diagnosis |
+| `PatchGeneratorService` | Issue + diagnosis + ContextPackage → structured patch proposal |
+| `PatchValidatorService` | PatchProposal + full pre-fix file map → apply + command results |
+| `FlutterValidationProfile` | Paths → runnable? + flutter pub get / analyze / test |
 | `LLMService` | Thin OpenAI wrapper |
 | `RepositorySearchService` | Path/content candidate retrieval |
 | `TextNormalizer` | **Shared vocabulary layer.** Tokenization (camelCase, acronyms, separators) + conservative singularization + the `matches(term, text)` predicate |
@@ -313,6 +331,263 @@ False structural edges contaminate ranking more than missing edges.
 | `RepositoryEvidenceService` | Combines language evidence analyzer + graph |
 | `RepositoryRankingService` | Scores path / content / structural evidence |
 | FastAPI / future orchestration | HTTP + analyze flow |
+
+### Language boundary (`app/code_intelligence/`)
+
+Context building must work for languages the Dart pack knows nothing
+about, so it talks to code through one seam:
+
+```text
+ContextBuilderService          decides WHAT to include and HOW MUCH
+        ↓
+CodeIntelligence (Protocol)    the only language-aware boundary
+        ↓
+DartCodeIntelligence           adapter over the existing Dart pack
+```
+
+`CodeIntelligence` is a `Protocol`, not a base class — adapters inherit
+nothing, and a test fake needs no import. Adapters exchange only the plain
+records in `code_intelligence/types.py` (`Location`, `Span`, `Reference`);
+nothing language-specific crosses.
+
+**If the core ever needs to know a file is Dart, the boundary is in the
+wrong place.** The core is tested against a fake adapter in no real
+language, which is what keeps that honest.
+
+`DartCodeIntelligence` is pure delegation to `DartStructureAnalyzer`,
+`DartSymbolLocator`, `DartUsageAnalyzer` and `RepositorySearchService`. It
+adds no analysis, so wrapping cannot change Dart behaviour — the parity
+tests in `test_dart_code_intelligence.py` assert that against the real
+fixtures. Keep them passing when touching either side.
+
+Resolution stays conservative across the seam: `declaration_of` returns
+`None` for a symbol that is unknown **or** ambiguous. Both are failures to
+resolve. A missing location costs context; a wrong one sends a patch
+generator at the wrong code.
+
+`DartSpanLocator` answers where a declaration **ends** — the one capability
+no existing component had, and the only new parsing in this layer. Brace
+matching over masked source, so it is heuristic, and the rule is that an
+uncertain answer is `None`: the caller falls back to a fixed window, which
+costs context, whereas a wrong span silently truncates the code a patch is
+reasoned about.
+
+Three Dart-specific traps it handles, each with a test:
+
+- **Named parameters are braces.** `CarBloc({required this.getCars})` ends
+  the declaration at its own parameter list under naive counting. Braces
+  inside parentheses are ignored.
+- **Calls look like declarations.** `const Icon(Icons.error, size: 40),`
+  matches the shared `Type name(` pattern. A signature followed by `,` or a
+  closing bracket is refused — but **only in the signature**: applying that
+  rule inside a body makes every `Text('a'),` in a list literal abandon the
+  enclosing class.
+- **Expression bodies have no brace.** `=> repository.fetch();` ends at the
+  semicolon, as do abstract methods and fields.
+
+Measured on all four fixtures: **545 of 566 declarations resolve to a span
+(96%)**, and every decline is a call-shaped false positive from the shared
+patterns — no real class or method loses its span. Re-run that sweep after
+touching the locator; the failure mode is losing real declarations, and it
+does not announce itself.
+
+Known residual: `return Column(children: [` reads "return" as a return
+type and yields a small bounded span attributed to `Column`. Fixing it
+means filtering statement keywords in `DartSymbolLocator`, which changes
+existing Dart behaviour.
+
+`DartStructureAnalyzer.mask_source()`, `strip_comments()` and
+`normalize_path()` are public. They were private helpers that the rest of
+the Dart pack reached into anyway. The underscored spellings remain as
+aliases and carry no behaviour — do not add new callers.
+
+### Patch repair benchmark
+
+`evalutation/patch_benchmark.py` measures whether a generated patch
+**applies to the pre-fix tree and survives validation** — not whether it
+reproduces the historical commit.
+
+```bash
+PYTHONPATH=backend python -m evalutation.patch_benchmark \
+    --cases evalutation/cases/commit_grounded --proposals canned
+PYTHONPATH=backend python -m evalutation.patch_benchmark \
+    --cases evalutation/cases/commit_grounded --proposals generated
+```
+
+**A patch is not wrong for differing from the historical fix.** There are
+many correct ways to fix a bug, and demanding one of them measures mimicry
+rather than repair. The fix commit supplies supporting ground truth only —
+which files a real fix touched — and recall/precision are diagnostics, not
+the verdict. This is not hypothetical: on issue #1 the generator produces a
+correct repair that is *not* byte-identical to the canned proposal.
+
+Two proposal sources, never mixed, always recorded on the result:
+`canned` holds the generator fixed so a failure is unambiguously
+downstream; `generated` measures the real pipeline. **A canned pass says
+the validator works; only a generated pass says PatchPilot repaired
+anything.**
+
+Cases are classified by how far they got — `generation_failure`,
+`proposal_invalid`, `apply_failure`, `validation_failure`, `passed` — so an
+unavailable model is visible as its own stage rather than scored as a bad
+patch.
+
+> **Validation currently proves the path, not compilation.** Committed
+> pre-fix fixtures are still source-only (they have not been
+> re-snapshotted). `FlutterValidationProfile` requires `pubspec.yaml`
+> at the repo root before it emits `flutter pub get` / `analyze` /
+> `test`. Against today's fixtures the profile reports not runnable and
+> the harness runs no commands. **Do not read a PASS without commands
+> as "the code compiles."** Re-snapshot with
+> `get_repository_tracked_files` when a runnable workspace is needed.
+
+The snapshotter itself is language-agnostic: UTF-8 git blobs under a
+size cap, no `if Flutter: include pubspec.yaml`. Production analysis
+still fetches source extensions only.
+
+Baseline, both sources, all three cases: 3/3 generated, 3/3 applied, 3/3
+validated (fake runner), file recall and precision 1.00.
+
+### ContextBuilderService
+
+Selects the code a patch generator needs. Performs no retrieval and calls
+no model — which files are relevant was decided by ranking, which has a
+benchmark behind it.
+
+Candidates are collected in tier order, and **eviction is the same list
+read backwards**, so a plan can be truncated anywhere and remain the best
+context available at that size:
+
+```text
+0 defect       the declaration the diagnosis named
+1 supporting   declarations it referenced
+2 dependency   what the defect imports
+3 caller       symbol references first, then bare importers
+4 contract     implements / extends, in BOTH directions
+5 test         tests that reach the changed code
+6 secondary    whatever else ranking surfaced
+```
+
+Two dedup rules, both load-bearing. Symbol-anchored candidates are distinct
+within a file, so a defect and a supporting declaration can share one.
+File-level candidates collapse against any path already present: once a
+file is in for a strong reason, adding it again for a weaker one says
+nothing new.
+
+**Tests are confined to tier 5.** A test importing the defect otherwise
+arrives as a *caller* first, which over-prioritises it and lets it escape
+the separate cap the test tier exists to impose.
+
+The core is tested against a `FakeCodeIntelligence` over files in a
+language that does not exist. If a test there ever needs Dart, the
+abstraction has leaked — that suite is what makes future adapters cheap.
+
+`build()` turns the plan into a `ContextPackage`: enclosing span or a
+fixed fallback window, padded, with the file header unioned in; overlapping
+or near-adjacent slices in one file merge; a file collapses to whole-file
+when retained lines cross a configurable fraction. `ContextBudget` then
+evicts reverse-tier (T0 is never cut). Defaults are provisional
+(`max_files=12`, `max_lines_total=1200`, `max_lines_per_file=400`,
+`max_tests=2`) and are not tuned against the commit-grounded cases.
+
+Language is not assumed. `CodeIntelligenceRegistry` selects an adapter
+per file by extension (`.dart` → `DartCodeIntelligence`; anything else
+→ `NullCodeIntelligence`). The null adapter answers every protocol
+method conservatively so an unsupported language still yields a
+file-level package. Slices record their own `language` and `adapter`; a
+mixed repository is labelled `mixed` at package level. The builder never
+imports Dart.
+
+> **Symbol resolution.** `DartSymbolLocator` treats a class and its
+> constructor as one declaration, and prefers a product-code site over a
+> test-file match. Genuinely ambiguous product declarations still resolve
+> to none. Constructor calls (`const Foo()`, `return Foo()`) are not
+> indexed as functions.
+
+### PatchGeneratorService
+
+Turns bounded context into a structured patch proposal. Performs no
+retrieval, no ranking, and no repository access — if a path is not in
+`ContextPackage.slices`, it cannot be edited.
+
+```text
+issue + diagnosis + ContextPackage  →  PatchProposal
+                                              ↓
+                               PatchValidator (offline; not API-wired)
+```
+
+Input is exactly `(issue, diagnosis, context_package)`. Diagnosis
+`suggested_fix` is guidance in the prompt, not a patch. Slice `content`
+is the only editable truth; hunk `old_text` must match the context-
+derived span for `[start_line, end_line]` after the same
+`splitlines()` / `"\n".join` normalization ContextBuilder uses.
+
+**Output contract.** `PatchProposal` carries `status`, prose fields,
+and `files[]` of `PatchHunk` records (`start_line`, `end_line`,
+`old_text`, `new_text`). Status values: `ok`, `insufficient_context`,
+`ambiguous`, `invalid`, `empty`. `to_json()` uses `sort_keys=True` for
+snapshot tests.
+
+**Validation is two-stage.** The model response is parsed like diagnosis
+(strip fences → `json.loads` → hand-written schema check). Hunks are then
+context-anchored: path must appear in slices, every line in the range
+must be covered, `old_text` must match exactly, and overlapping hunks in
+one file are rejected. Parse failures return `status=invalid` as a
+proposal — they do not raise — so a runner can keep diagnosis and
+context alongside the failure.
+
+**Wired on demand.** `AnalysisRunner` builds and stores a
+`ContextPackage` after diagnosis. Patch generation is not part of the
+analysis job itself — `POST /api/analyses/{id}/patch` calls
+`PatchGeneratorService` with the stored issue, diagnosis, and context
+only. The proposal is kept on the job as `patch_proposal` /
+`patch_error` and served from `/patch`, never from the polling
+`Analysis` payload.
+
+**Review UI.** The diagnosis screen keeps its existing layout. After a
+completed diagnosis, `PatchPanel` calls generate/get `/patch`, renders
+hunks as a file-grouped diff, then `POST /patch/validate`. Approval is
+session-local UI state. No branch, commit, or GitHub PR.
+
+### PatchValidatorService
+
+Applies a `PatchProposal` against a **full pre-fix file snapshot**, not
+ContextPackage slices. Deterministic: no LLM, no GitHub, no ranking.
+
+```text
+PatchProposal + file map + ValidationConfig  →  PatchValidationResult
+```
+
+Hunk `old_text` must match the full file at `[start_line, end_line]`
+after the same `splitlines()` / `"\n".join` normalization. Hunks in one
+file are applied in reverse `start_line` order. The original snapshot
+map is never mutated; files are copied into a temp workspace, patched,
+optionally checked with operator-supplied argv, then the workspace is
+removed.
+
+**Statuses.** `proposal_invalid` (malformed, overlap, unsafe path,
+non-ok proposal), `apply_failed` (missing path, stale `old_text`),
+`validation_failed` (apply succeeded; command non-zero or timeout),
+`passed` (apply succeeded; commands exit 0, or none were configured).
+Success is not byte-identity with a historical fix commit.
+
+**Commands** go through `ValidationCommandRunner`. Tests use
+`FakeValidationCommandRunner`. `ShellValidationCommandRunner` runs argv
+with timeout and bounded logs (`shell=True` is never used).
+`FlutterValidationProfile` inspects the file map and, when
+`pubspec.yaml` is present, supplies `flutter pub get` / `analyze` /
+`test`. The snapshotter does not know Flutter.
+
+**Wired on demand.** `POST /api/analyses/{id}/patch/validate` applies
+the stored proposal against the job's **full pinned snapshot**
+(`snapshot` / `snapshot_commit`), not ranked `sources`. Ranked sources
+stay top-10 for the diagnosis UI and `GET /files`. When
+`FlutterValidationProfile` finds `pubspec.yaml` in the snapshot, it
+runs flutter pub get / analyze / test. The result is stored as
+`patch_validation` / `patch_validation_error` and served from
+`/patch/validate`, never from the polling `Analysis` payload. A
+snapshot SHA that does not match `commit_sha` is refused. No branch,
+commit, or GitHub PR.
 
 ### Language-specific (Dart today)
 
@@ -587,7 +862,138 @@ PYTHONPATH=backend python -m evalutation.score_ranking --compare before.json
 # re-freeze the snapshot (network; do this deliberately)
 PYTHONPATH=backend python -m evalutation.snapshot \
     --owner SanjayKParida --repo car-rental-app
+
+# freeze an explicit commit
+PYTHONPATH=backend python -m evalutation.snapshot \
+    --owner O --repo R --commit <sha>
+
+# freeze the state BEFORE a fix landed (for real-world benchmarking)
+PYTHONPATH=backend python -m evalutation.snapshot \
+    --owner O --repo R --parent-of <fix-sha> \
+    --out evalutation/fixtures/<name>_pre_fix.json
 ```
+
+### Finding benchmark candidates
+
+```bash
+PYTHONPATH=backend python3 -m evalutation.discover_cases \
+    --owner O --repo R --limit 20
+```
+
+Finds `(closed issue, fixing commit)` pairs and prints them with the
+evidence for each. It **proposes; it does not create** — review the
+candidates, then hand the good ones to `generate_case.py`. A wrong
+guess costs a line of output rather than a fixture that looks valid.
+
+Evidence, strongest first: a timeline `closed` event carrying a
+`commit_id`, then a `referenced` commit whose message closes the issue.
+Rule 5 (diff touches product Dart) reuses `ground_truth`, so discovery
+and scoring cannot disagree about what counts as product code.
+
+> **Measured yield is currently near zero, and this is the blocker for
+> harvesting real cases.** How Dart repositories actually close issues:
+>
+> | repo | closed by commit | cross-referenced PR | neither |
+> |---|---|---|---|
+> | `felangel/bloc` | 0% | 0% | 100% |
+> | `flutter/samples` | 25% | 0% | 75% |
+>
+> Most issues are closed by hand with no machine-readable link at all.
+> Two further obstacles found on real repositories:
+>
+> - **Closed PRs outnumber closed issues ~9:1**, so scanning must skip
+>   them before they consume the budget (fixed; `examined` counts real
+>   issues only).
+> - **`referenced` commits often live in contributors' forks** and 422
+>   against the upstream repo. Skipped by design.
+> - **Monorepos defeat the `lib/` rule.** In `flutter/samples`, product
+>   code is `<project>/lib/...`, so `ground_truth.PRODUCT_ROOT`
+>   ("starts with `lib/`") matches nothing. Changing it to "contains a
+>   `lib/` segment" would fix that, but `ground_truth` is deliberately
+>   frozen — decide before harvesting from a monorepo.
+> - **Fixes must be localised.** `flutter/samples` #2818 closed with a
+>   250-file maintenance commit; `--max-files` (default 5) rejects
+>   those, because scoring retrieval against a repo-wide sweep measures
+>   nothing.
+
+### Adding a benchmark case
+
+```bash
+PYTHONPATH=backend python3 -m evalutation.generate_case \
+    --owner O --repo R --issue-number N --fix-commit <full-sha>
+```
+
+Writes both halves — `fixtures/<name>_pre_fix.json` and
+`cases/commit_grounded/<name>.json` — and pins freshly extracted
+signals. Composes `ground_truth.derive_ground_truth`,
+`snapshot.capture` and `IssueSignalExtractionService`; adds no logic.
+
+It refuses rather than emitting a case that cannot be scored:
+
+- the fix changes no product source file (nothing to find)
+- the fix commit has no parent (no pre-fix state)
+- the snapshot is not the fix's parent (code and answer disagree —
+  the exact pairing bug that produced a bad fixture once already)
+- signal extraction fails or returns nothing (case would not be
+  reproducible)
+- the fixture or case already exists, without `--force`
+
+Ground truth is derived **before** anything is downloaded, so an
+unscoreable case costs no snapshot.
+
+**Review the pinned signals after generating.** They are one model
+sample, not a reviewed set.
+
+### Commit-grounded benchmark
+
+```bash
+PYTHONPATH=backend python3 -m evalutation.commit_benchmark \
+    --cases evalutation/cases/commit_grounded
+```
+
+Runs the real pipeline against a pre-fix snapshot and scores it against
+what the fix commit actually changed. Ground truth is derived, not
+hand-labelled. Add a case by dropping a JSON file into the directory;
+the runner has no built-in knowledge of which cases exist.
+
+**Cases pin their signals, and must.** Signal extraction is a model
+call: the same case measured rank 3, 1, 1 on three identical runs,
+flipping recall@1 between 0.00 and 1.00. With signals pinned, RANK and
+recall@k are reproducible. A test enforces that every committed case
+pins signals and records why.
+
+What is still stochastic: everything downstream of
+`IssueDiagnosisService` — root cause, cited files, PREC and the
+PASS/FAIL verdict. The rollup footer labels which half is which. Do
+not read a PREC change between two runs as a regression.
+
+`--extract-signals` bypasses the pinned set to measure extraction end
+to end. Never use it for a before/after comparison.
+
+> **Known, not fixed:** files with *equal* scores change places between
+> runs, because Python randomises string hashing per process and the
+> ranking sort has no tie-break. It moves no metric — only display
+> order below the top few. The fix is a secondary sort key on `path` in
+> `AnalyzeIssueService._build_ranked_output`.
+
+`--parent-of` is the one that matters for benchmarking against real
+closed issues: the repository must be frozen as it was *before* the
+fix, or the defect is not present to find.
+
+`GithubService.get_repository_tree` / `get_repository_source_files`
+take an optional `ref`. Omitting it keeps the default-branch
+behaviour every other caller depends on. **A caller that resolves a
+commit must pass that ref through to the file fetch** — resolving a
+SHA and then reading the default branch produces a fixture labelled
+with an old commit but containing today's code, which looks valid and
+silently measures the wrong thing.
+
+`evalutation.snapshot.capture` uses `get_repository_tracked_files`:
+UTF-8 blobs at that ref, size-capped, no language include-list.
+Analysis still uses `get_repository_source_files` so ranking does not
+ingest lockfiles. After a re-snapshot, pass the full map to the
+validator and keep source-filtered files for ranking — do not mix
+those jobs in the snapshotter.
 
 **Rule: no scoring weight changes without a before/after run.**
 Current retrieval baseline: `evalutation/baseline_phase5.json`.

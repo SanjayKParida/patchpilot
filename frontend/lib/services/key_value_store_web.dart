@@ -25,4 +25,11 @@ class KeyValueStoreImpl implements KeyValueStore {
       // A failed write costs the user nothing important.
     }
   }
+
+  @override
+  void remove(String key) {
+    try {
+      web.window.localStorage.removeItem(key);
+    } catch (_) {}
+  }
 }

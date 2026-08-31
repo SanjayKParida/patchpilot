@@ -54,7 +54,7 @@ class FakeGithub:
     def compare_commits(self, owner, repo, base, head):
         return {"files": self.changed}
 
-    def get_repository_source_files(self, owner, repo, ref=None):
+    def get_repository_tracked_files(self, owner, repo, ref=None):
         self.source_calls.append(ref)
         return [
             {"path": TASK_BLOC, "sha": "b1", "content": "class TaskBloc {}"}

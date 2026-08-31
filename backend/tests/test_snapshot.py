@@ -39,7 +39,7 @@ class FakeGithub:
     """
 
     def __init__(self):
-        self.source_file_refs = []
+        self.tracked_file_refs = []
 
         self.commits = {
             "main": {"sha": HEAD, "parents": [{"sha": PARENT}]},
@@ -57,8 +57,8 @@ class FakeGithub:
             raise Exception(f"404 for {ref}")
         return self.commits[ref]
 
-    def get_repository_source_files(self, owner, repo, ref=None):
-        self.source_file_refs.append(ref)
+    def get_repository_tracked_files(self, owner, repo, ref=None):
+        self.tracked_file_refs.append(ref)
         return [
             {
                 "path": "lib/main.dart",
@@ -104,7 +104,7 @@ def test_default_snapshots_the_default_branch(github):
 
     assert snapshot["commit"] == HEAD
     # None means "the default branch" to GithubService.
-    assert github.source_file_refs == [None]
+    assert github.tracked_file_refs == [None]
 
 
 def test_resolve_ref_returns_none_by_default(github):
@@ -129,7 +129,7 @@ def test_files_are_read_from_the_requested_commit(github):
 
     snapshot = _capture(github, commit=FIX, issue_number=1)
 
-    assert github.source_file_refs == [FIX]
+    assert github.tracked_file_refs == [FIX]
     assert HEAD not in snapshot["files"][0]["content"]
     assert FIX in snapshot["files"][0]["content"]
 
@@ -142,7 +142,7 @@ def test_parent_of_snapshots_the_first_parent(github):
     snapshot = _capture(github, parent_of=FIX, issue_number=1)
 
     assert snapshot["commit"] == PARENT
-    assert github.source_file_refs == [PARENT]
+    assert github.tracked_file_refs == [PARENT]
 
 
 def test_parent_of_records_the_parent_not_the_fix(github):
@@ -181,7 +181,7 @@ def test_nonexistent_commit_takes_no_snapshot(github):
         _capture(github, commit="deadbeef", issue_number=1)
 
     # Nothing was downloaded on the way to failing.
-    assert github.source_file_refs == []
+    assert github.tracked_file_refs == []
 
 
 def test_commit_and_parent_of_are_mutually_exclusive(github):
@@ -251,7 +251,7 @@ def test_pinning_a_commit_without_an_issue_number_is_refused(github):
         _capture(github, parent_of=FIX)
 
     # Nothing was downloaded before refusing.
-    assert github.source_file_refs == []
+    assert github.tracked_file_refs == []
 
 
 def test_a_missing_issue_is_rejected(github):

@@ -1,0 +1,32 @@
+{
+  "owner": "SanjayKParida",
+  "repo": "patchpilot-diagnosis-demo",
+  "issue_number": 1,
+  "fix_commit": "afd804edc491fb08e2bb2eed9df4bbfc6985edca",
+  "snapshot": "evalutation/fixtures/task_refresh_pre_fix.json",
+  "title": "Task list remains stuck on the loading spinner after refreshing",
+  "body": "## Summary\n\nRefreshing the task list causes the screen to remain stuck on the loading\nspinner indefinitely.\n\n## Steps to reproduce\n\n1. Launch the app.\n2. Wait for the task list to load.\n3. Tap the refresh button.\n4. Observe the screen.\n\n## Expected behavior\n\nThe list should briefly show a loading indicator and then display the\ntasks again.\n\n## Actual behavior\n\nThe loading spinner appears and never disappears. No error message is\nshown.\n\n## Additional context\n\n- Initial task loading works correctly.\n- Deleting tasks works correctly.\n- Toggling task completion works correctly.\n- Switching filters before refreshing does not change the behavior.\n- The issue reproduces consistently.",
+  "signals_note": "Captured once at case generation and pinned. Signal extraction is a model call and varies between runs, which makes ranking measurements irreproducible. Review these terms; edit them if they are wrong. Do not remove the pinning.",
+  "signals": [
+    {
+      "term": "task",
+      "type": "domain"
+    },
+    {
+      "term": "refresh",
+      "type": "behavior"
+    },
+    {
+      "term": "loading",
+      "type": "behavior"
+    },
+    {
+      "term": "spinner",
+      "type": "ui"
+    },
+    {
+      "term": "filter",
+      "type": "behavior"
+    }
+  ]
+}

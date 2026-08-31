@@ -10,4 +10,7 @@ class KeyValueStoreImpl implements KeyValueStore {
 
   @override
   void write(String key, String value) {}
+
+  @override
+  void remove(String key) {}
 }

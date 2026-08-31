@@ -3,9 +3,33 @@ import logging
 
 import httpx
 
-from app.errors import RepositoryNotFound, UpstreamUnavailable
+from app.errors import InvalidRef, RepositoryNotFound, UpstreamUnavailable
 
 logger = logging.getLogger(__name__)
+
+# Snapshots keep UTF-8 git blobs below this size. Not a language
+# filter: binaries and huge assets are skipped so a fixture stays
+# a reconstructible text tree, not a copy of every font and image.
+MAX_TRACKED_BLOB_BYTES = 1024 * 1024
+
+
+def tracked_blob_over_size(item, max_bytes=MAX_TRACKED_BLOB_BYTES):
+    size = item.get("size")
+
+    if size is None:
+        return False
+
+    return size > max_bytes
+
+
+def decode_utf8_or_none(raw):
+    if raw is None:
+        return None
+
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 class GithubService:
@@ -117,7 +141,60 @@ class GithubService:
     def get_commit(self, owner: str, repo: str, branch: str):
         return self._request(
             f"https://api.github.com/repos/{owner}/{repo}/commits/{branch}"
-        )   
+        )
+
+    def resolve_commit(self, owner: str, repo: str, ref: str | None = None):
+        """
+        Resolve a ref to a full commit SHA.
+
+        `ref` may be a SHA, branch, or tag. Omit it to pin the
+        repository's current default branch. An explicit ref that
+        does not resolve is an error — never substituted with HEAD.
+        """
+
+        explicit = (ref or "").strip() or None
+
+        try:
+            target = explicit
+
+            if target is None:
+                repository = self.get_repository(owner, repo)
+                target = repository["default_branch"]
+
+            commit = self.get_commit(owner, repo, target)
+        except RepositoryNotFound as e:
+            if explicit is not None:
+                raise InvalidRef(
+                    f"Could not resolve ref {explicit!r} in "
+                    f"{owner}/{repo}. The analysis was not started."
+                ) from e
+            raise
+        except UpstreamUnavailable as e:
+            # GitHub uses 422 for a SHA that is not a commit in the
+            # repo (404 is used for unknown branch names). Neither
+            # is "GitHub is down", and neither may fall back to HEAD.
+            if explicit is not None and (
+                " 422 " in f" {e} " or " 404 " in f" {e} "
+            ):
+                raise InvalidRef(
+                    f"Could not resolve ref {explicit!r} in "
+                    f"{owner}/{repo}. The analysis was not started."
+                ) from e
+            raise
+
+        sha = commit.get("sha") if isinstance(commit, dict) else None
+
+        if not sha:
+            if explicit is not None:
+                raise InvalidRef(
+                    f"Could not resolve ref {explicit!r} in "
+                    f"{owner}/{repo}. The analysis was not started."
+                )
+            raise UpstreamUnavailable(
+                f"GitHub did not return a commit SHA for {owner}/{repo}"
+            )
+
+        return sha 
 
     def compare_commits(
         self,
@@ -174,11 +251,57 @@ class GithubService:
 
         return source_files
 
-    def get_blob(self, owner: str, repo: str, sha: str):
+    def get_repository_tracked_files(
+        self,
+        owner: str,
+        repo: str,
+        ref: str | None = None,
+        max_bytes: int = MAX_TRACKED_BLOB_BYTES,
+        on_progress=None,
+    ):
+        """
+        UTF-8 blobs at `ref`, regardless of language or extension.
+
+        Oversized and non-UTF-8 blobs are skipped. Production analysis
+        still uses get_repository_source_files, which filters by
+        extension before fetching content.
+        """
+
+        files = self.get_repository_tree(owner, repo, ref=ref)
+        tracked = []
+        eligible = [
+            file
+            for file in files
+            if not tracked_blob_over_size(file, max_bytes=max_bytes)
+        ]
+        total = len(eligible)
+
+        if on_progress is not None:
+            on_progress(0, total)
+
+        for index, file in enumerate(eligible, start=1):
+            raw = self.get_blob_bytes(owner, repo, file["sha"])
+            content = decode_utf8_or_none(raw)
+
+            if content is not None:
+                tracked.append({
+                    **file,
+                    "content": content,
+                })
+
+            if on_progress is not None:
+                on_progress(index, total)
+
+        return tracked
+
+    def get_blob_bytes(self, owner: str, repo: str, sha: str):
         blob = self._request(
             f"https://api.github.com/repos/{owner}/{repo}/git/blobs/{sha}"
-        )     
-        return base64.b64decode(blob['content']).decode('utf-8')
+        )
+        return base64.b64decode(blob["content"])
+
+    def get_blob(self, owner: str, repo: str, sha: str):
+        return self.get_blob_bytes(owner, repo, sha).decode("utf-8")
 
     def get_repository_tree(
         self,

@@ -29,6 +29,17 @@ void main() {
       AnalysisCache.keyFor('owner', 'repo', 1),
       isNot(AnalysisCache.keyFor('owner', 'repo', 2)),
     );
+    expect(
+      AnalysisCache.keyFor('owner', 'repo', 1),
+      isNot(
+        AnalysisCache.keyFor(
+          'owner',
+          'repo',
+          1,
+          ref: 'f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c',
+        ),
+      ),
+    );
   });
 
   test('a completed analysis is returned instead of re-run', () {

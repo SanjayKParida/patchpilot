@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "summary": "return an empty task list instead of throwing",
+  "reasoning": "An empty cache is a valid state, not an error.",
+  "confidence": 1.0,
+  "warnings": [],
+  "errors": [],
+  "files": [
+    {
+      "path": "lib/data/datasources/task_local_data_source.dart",
+      "language": "dart",
+      "hunks": [
+        {
+          "start_line": 53,
+          "end_line": 55,
+          "old_text": "    if (_tasks.isEmpty) {\n      throw const CacheException('No tasks found in local storage');\n    }",
+          "new_text": ""
+        }
+      ]
+    }
+  ]
+}

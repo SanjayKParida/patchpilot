@@ -11,6 +11,21 @@ import 'key_value_store_stub.dart'
 abstract class KeyValueStore {
   String? read(String key);
   void write(String key, String value);
+  void remove(String key);
 
   factory KeyValueStore() = KeyValueStoreImpl;
+}
+
+
+class MemoryKeyValueStore implements KeyValueStore {
+  final Map<String, String> _data = {};
+
+  @override
+  String? read(String key) => _data[key];
+
+  @override
+  void write(String key, String value) => _data[key] = value;
+
+  @override
+  void remove(String key) => _data.remove(key);
 }

@@ -9,6 +9,10 @@ class Repository {
   final String fullName;
   final String? description;
   final bool private;
+  final bool demo;
+  final bool? canRead;
+  final bool? canWrite;
+  final String? access;
 
   const Repository({
     required this.owner,
@@ -16,6 +20,10 @@ class Repository {
     required this.fullName,
     this.description,
     this.private = false,
+    this.demo = false,
+    this.canRead,
+    this.canWrite,
+    this.access,
   });
 
   factory Repository.fromJson(Map<String, dynamic> json) {
@@ -25,6 +33,10 @@ class Repository {
       fullName: json['full_name'] as String? ?? '',
       description: json['description'] as String?,
       private: json['private'] as bool? ?? false,
+      demo: json['demo'] as bool? ?? false,
+      canRead: json['can_read'] as bool?,
+      canWrite: json['can_write'] as bool?,
+      access: json['access'] as String?,
     );
   }
 
@@ -34,7 +46,89 @@ class Repository {
         'full_name': fullName,
         'description': description,
         'private': private,
+        'demo': demo,
+        'can_read': canRead,
+        'can_write': canWrite,
+        'access': access,
       };
+}
+
+class RepositorySnapshot {
+  final String commitSha;
+  final String status;
+  final int fileCount;
+  final int progressPercent;
+  final int filesDownloaded;
+  final int filesTotal;
+
+  const RepositorySnapshot({
+    required this.commitSha,
+    required this.status,
+    this.fileCount = 0,
+    this.progressPercent = 0,
+    this.filesDownloaded = 0,
+    this.filesTotal = 0,
+  });
+
+  bool get isReady => status == 'ready';
+  bool get isRunning => status == 'running';
+  bool get isMissing => status == 'missing';
+
+  factory RepositorySnapshot.fromJson(Map<String, dynamic> json) {
+    return RepositorySnapshot(
+      commitSha: json['commit_sha'] as String? ?? '',
+      status: json['status'] as String? ?? 'missing',
+      fileCount: json['file_count'] as int? ?? 0,
+      progressPercent: json['progress_percent'] as int? ?? 0,
+      filesDownloaded: json['files_downloaded'] as int? ?? 0,
+      filesTotal: json['files_total'] as int? ?? 0,
+    );
+  }
+}
+
+class AuthUser {
+  final String id;
+  final int githubId;
+  final String githubLogin;
+  final String avatarUrl;
+  final String name;
+
+  const AuthUser({
+    required this.id,
+    required this.githubId,
+    required this.githubLogin,
+    this.avatarUrl = '',
+    this.name = '',
+  });
+
+  String get displayName => name.isNotEmpty ? name : githubLogin;
+
+  factory AuthUser.fromJson(Map<String, dynamic> json) {
+    return AuthUser(
+      id: json['id'] as String? ?? '',
+      githubId: json['github_id'] as int? ?? 0,
+      githubLogin: json['github_login'] as String? ?? '',
+      avatarUrl: json['avatar_url'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+    );
+  }
+}
+
+class AuthMe {
+  final bool authenticated;
+  final AuthUser? user;
+
+  const AuthMe({required this.authenticated, this.user});
+
+  factory AuthMe.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+    return AuthMe(
+      authenticated: json['authenticated'] as bool? ?? false,
+      user: userJson is Map<String, dynamic>
+          ? AuthUser.fromJson(userJson)
+          : null,
+    );
+  }
 }
 
 class Issue {
@@ -280,6 +374,8 @@ class Analysis {
   final List<RelevantFile> relevantFiles;
   final Diagnosis? diagnosis;
   final String? diagnosisError;
+  final String? ref;
+  final String? commitSha;
 
   const Analysis({
     required this.id,
@@ -292,6 +388,8 @@ class Analysis {
     this.relevantFiles = const [],
     this.diagnosis,
     this.diagnosisError,
+    this.ref,
+    this.commitSha,
   });
 
   bool get isTerminal =>
@@ -338,6 +436,8 @@ class Analysis {
           .toList(),
       diagnosis: rawDiagnosis == null ? null : Diagnosis.fromJson(rawDiagnosis),
       diagnosisError: json['diagnosis_error'] as String?,
+      ref: json['ref'] as String?,
+      commitSha: json['commit_sha'] as String?,
     );
   }
 
@@ -383,5 +483,299 @@ class Answer {
   factory Answer.fromJson(Map<String, dynamic> json) => Answer(
         question: json['question'] as String? ?? '',
         answer: json['answer'] as String? ?? '',
+      );
+}
+
+class PatchHunk {
+  final int startLine;
+  final int endLine;
+  final String oldText;
+  final String newText;
+
+  const PatchHunk({
+    required this.startLine,
+    required this.endLine,
+    required this.oldText,
+    required this.newText,
+  });
+
+  factory PatchHunk.fromJson(Map<String, dynamic> json) => PatchHunk(
+        startLine: json['start_line'] as int? ?? 0,
+        endLine: json['end_line'] as int? ?? 0,
+        oldText: json['old_text'] as String? ?? '',
+        newText: json['new_text'] as String? ?? '',
+      );
+}
+
+class PatchFile {
+  final String path;
+  final String language;
+  final List<PatchHunk> hunks;
+
+  const PatchFile({
+    required this.path,
+    this.language = '',
+    this.hunks = const [],
+  });
+
+  String get fileName => path.split('/').last;
+
+  factory PatchFile.fromJson(Map<String, dynamic> json) => PatchFile(
+        path: json['path'] as String? ?? '',
+        language: json['language'] as String? ?? '',
+        hunks: (json['hunks'] as List<dynamic>? ?? [])
+            .map((e) => PatchHunk.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class PatchProposal {
+  final String status;
+  final String summary;
+  final String reasoning;
+  final double? confidence;
+  final List<PatchFile> files;
+  final List<String> warnings;
+  final List<String> errors;
+
+  const PatchProposal({
+    required this.status,
+    required this.summary,
+    required this.reasoning,
+    this.confidence,
+    this.files = const [],
+    this.warnings = const [],
+    this.errors = const [],
+  });
+
+  bool get isOk => status == 'ok';
+
+  bool get canValidate => isOk && files.isNotEmpty;
+
+  String get confidencePercent {
+    final value = confidence;
+    if (value == null) return '';
+    return '${(value * 100).round()}% confidence';
+  }
+
+  factory PatchProposal.fromJson(Map<String, dynamic> json) => PatchProposal(
+        status: json['status'] as String? ?? '',
+        summary: json['summary'] as String? ?? '',
+        reasoning: json['reasoning'] as String? ?? '',
+        confidence: (json['confidence'] as num?)?.toDouble(),
+        files: (json['files'] as List<dynamic>? ?? [])
+            .map((e) => PatchFile.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        warnings: (json['warnings'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        errors: (json['errors'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+}
+
+class ValidationCommandResult {
+  final String name;
+  final List<String> argv;
+  final int? exitCode;
+  final bool timedOut;
+  final String stdout;
+  final String stderr;
+  final int durationMs;
+  final bool passed;
+
+  const ValidationCommandResult({
+    required this.name,
+    this.argv = const [],
+    this.exitCode,
+    this.timedOut = false,
+    this.stdout = '',
+    this.stderr = '',
+    this.durationMs = 0,
+    this.passed = true,
+  });
+
+  String get displayName {
+    switch (name) {
+      case 'pub_get':
+        return 'flutter pub get';
+      case 'analyze':
+        return 'flutter analyze';
+      case 'test':
+        return 'flutter test';
+      default:
+        return argv.isNotEmpty ? argv.join(' ') : name;
+    }
+  }
+
+  factory ValidationCommandResult.fromJson(Map<String, dynamic> json) {
+    final timedOut = json['timed_out'] as bool? ?? false;
+    final exitCode = json['exit_code'] as int?;
+    final passedJson = json['passed'];
+    return ValidationCommandResult(
+      name: json['name'] as String? ?? '',
+      argv: (json['argv'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      exitCode: exitCode,
+      timedOut: timedOut,
+      stdout: json['stdout'] as String? ?? '',
+      stderr: json['stderr'] as String? ?? '',
+      durationMs: json['duration_ms'] as int? ?? 0,
+      passed: passedJson is bool
+          ? passedJson
+          : !timedOut && (exitCode ?? 0) == 0,
+    );
+  }
+}
+
+class PatchValidationResult {
+  final String status;
+  final bool applied;
+  final bool validationPassed;
+  final List<String> errors;
+  final List<String> warnings;
+  final List<ValidationCommandResult> commands;
+  final bool runnable;
+  final String unavailableReason;
+
+  const PatchValidationResult({
+    required this.status,
+    required this.applied,
+    required this.validationPassed,
+    this.errors = const [],
+    this.warnings = const [],
+    this.commands = const [],
+    this.runnable = false,
+    this.unavailableReason = '',
+  });
+
+  /// Real Flutter checks ran and passed. Apply-only is not success.
+  bool get isPassed =>
+      status == 'passed' && validationPassed && runnable;
+
+  bool get isFailed =>
+      status == 'apply_failed' ||
+      status == 'validation_failed' ||
+      status == 'proposal_invalid';
+
+  bool get isUnavailable =>
+      !isFailed && (status == 'passed' && !runnable);
+
+  factory PatchValidationResult.fromJson(Map<String, dynamic> json) =>
+      PatchValidationResult(
+        status: json['status'] as String? ?? '',
+        applied: json['applied'] as bool? ?? false,
+        validationPassed: json['validation_passed'] as bool? ?? false,
+        errors: (json['errors'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        warnings: (json['warnings'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        commands: (json['commands'] as List<dynamic>? ?? [])
+            .map(
+              (e) => ValidationCommandResult.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
+            .toList(),
+        runnable: json['runnable'] as bool? ?? false,
+        unavailableReason: json['unavailable_reason'] as String? ?? '',
+      );
+}
+
+class PatchApproval {
+  final bool approved;
+  final String approvedAt;
+  final String commitSha;
+  final String analysisId;
+
+  const PatchApproval({
+    required this.approved,
+    required this.approvedAt,
+    required this.commitSha,
+    required this.analysisId,
+  });
+
+  factory PatchApproval.fromJson(Map<String, dynamic> json) => PatchApproval(
+        approved: json['approved'] as bool? ?? false,
+        approvedAt: json['approved_at'] as String? ?? '',
+        commitSha: json['commit_sha'] as String? ?? '',
+        analysisId: json['analysis_id'] as String? ?? '',
+      );
+}
+
+class PatchDelivery {
+  final String status;
+  final String stage;
+  final String? branch;
+  final String? commitSha;
+  final String? baseCommitSha;
+  final int? prNumber;
+  final String? prUrl;
+  final bool draft;
+  final List<String> errors;
+  final List<String> warnings;
+
+  const PatchDelivery({
+    required this.status,
+    required this.stage,
+    this.branch,
+    this.commitSha,
+    this.baseCommitSha,
+    this.prNumber,
+    this.prUrl,
+    this.draft = true,
+    this.errors = const [],
+    this.warnings = const [],
+  });
+
+  bool get isSucceeded =>
+      status == 'succeeded' && prNumber != null && (prUrl ?? '').isNotEmpty;
+
+  bool get isRunning => status == 'running';
+
+  bool get isFailed => status == 'failed';
+
+  String get stageLabel {
+    switch (stage) {
+      case 'preconditions':
+        return 'Preconditions';
+      case 'apply':
+        return 'Apply patch';
+      case 'commit':
+        return 'Create commit';
+      case 'push':
+        return 'Push branch';
+      case 'pull_request':
+        return 'Open pull request';
+      default:
+        return stage;
+    }
+  }
+
+  String get shortCommit {
+    final sha = commitSha ?? baseCommitSha ?? '';
+    if (sha.length <= 12) return sha;
+    return sha.substring(0, 12);
+  }
+
+  factory PatchDelivery.fromJson(Map<String, dynamic> json) => PatchDelivery(
+        status: json['status'] as String? ?? '',
+        stage: json['stage'] as String? ?? '',
+        branch: json['branch'] as String?,
+        commitSha: json['commit_sha'] as String?,
+        baseCommitSha: json['base_commit_sha'] as String?,
+        prNumber: json['pr_number'] as int?,
+        prUrl: json['pr_url'] as String?,
+        draft: json['draft'] as bool? ?? true,
+        errors: (json['errors'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        warnings: (json['warnings'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
       );
 }

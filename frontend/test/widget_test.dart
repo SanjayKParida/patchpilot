@@ -1,16 +1,49 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/main.dart';
+import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/widgets/common.dart';
 
 void main() {
-  testWidgets('landing screen offers a repository to analyze', (tester) async {
-    await tester.pumpWidget(const PatchPilotApp());
+  testWidgets('landing screen offers the demo without GitHub login',
+      (tester) async {
+    final api = ApiClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/me')) {
+          return http.Response(
+            jsonEncode({'authenticated': false, 'user': null}),
+            200,
+            headers: const {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.endsWith('/repositories/demo')) {
+          return http.Response(
+            jsonEncode({
+              'owner': 'SanjayKParida',
+              'repo': 'patchpilot-diagnosis-demo',
+              'full_name': 'SanjayKParida/patchpilot-diagnosis-demo',
+              'description': 'Try PatchPilot on prepared issues',
+              'demo': true,
+            }),
+            200,
+            headers: const {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response('nope', 404);
+      }),
+    );
+
+    await tester.pumpWidget(PatchPilotApp(api: api));
+    await tester.pumpAndSettle();
 
     expect(find.text('PatchPilot'), findsOneWidget);
-    expect(find.text('Analyze repository'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Open Demo'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Connect GitHub'), findsOneWidget);
   });
 
   testWidgets('short text does not show a more control', (tester) async {

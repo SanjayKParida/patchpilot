@@ -1,0 +1,1619 @@
+{
+  "baseline": {
+    "max_files": 12,
+    "max_lines_per_file": 400,
+    "max_lines_total": 1200,
+    "max_tests": 2
+  },
+  "baseline_metrics": {
+    "budget": {
+      "max_files": 12,
+      "max_lines_per_file": 400,
+      "max_lines_total": 1200,
+      "max_tests": 2
+    },
+    "cases": [
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.45625587958607716,
+        "files_used": 12,
+        "issue_number": 3,
+        "line_recall": 1.0,
+        "lines_used": 485,
+        "missing_files": [],
+        "uncovered_lines": {}
+      },
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.43457943925233644,
+        "files_used": 12,
+        "issue_number": 2,
+        "line_recall": 1.0,
+        "lines_used": 465,
+        "missing_files": [],
+        "uncovered_lines": {}
+      },
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.44164332399626516,
+        "files_used": 12,
+        "issue_number": 1,
+        "line_recall": 1.0,
+        "lines_used": 473,
+        "missing_files": [],
+        "uncovered_lines": {}
+      }
+    ],
+    "context_file_recall": 1.0,
+    "efficiency": 0.4441595476115596,
+    "files_used": 12,
+    "label": "baseline",
+    "line_recall": 1.0,
+    "lines_used": 485,
+    "passes_recall": true
+  },
+  "best": {
+    "budget": {
+      "max_files": 3,
+      "max_lines_per_file": 50,
+      "max_lines_total": 200,
+      "max_tests": 0
+    },
+    "cases": [
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.05644402634054563,
+        "files_used": 3,
+        "issue_number": 3,
+        "line_recall": 1.0,
+        "lines_used": 60,
+        "missing_files": [],
+        "uncovered_lines": {}
+      },
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.13551401869158877,
+        "files_used": 3,
+        "issue_number": 2,
+        "line_recall": 1.0,
+        "lines_used": 145,
+        "missing_files": [],
+        "uncovered_lines": {}
+      },
+      {
+        "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.06255835667600373,
+        "files_used": 3,
+        "issue_number": 1,
+        "line_recall": 1.0,
+        "lines_used": 67,
+        "missing_files": [],
+        "uncovered_lines": {}
+      }
+    ],
+    "context_file_recall": 1.0,
+    "efficiency": 0.08483880056937938,
+    "files_used": 3,
+    "label": "promising",
+    "line_recall": 1.0,
+    "lines_used": 145,
+    "passes_recall": true
+  },
+  "configurations_that_lose_recall": [],
+  "efficiency_gain_vs_baseline": 0.8089902580602066,
+  "experiments": [
+    {
+      "budget": {
+        "max_files": 3,
+        "max_lines_per_file": 50,
+        "max_lines_total": 200,
+        "max_tests": 0
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.05644402634054563,
+          "files_used": 3,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 60,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13551401869158877,
+          "files_used": 3,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 145,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.06255835667600373,
+          "files_used": 3,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 67,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.08483880056937938,
+      "files_used": 3,
+      "label": "promising",
+      "line_recall": 1.0,
+      "lines_used": 145,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 3,
+        "max_lines_per_file": 50,
+        "max_lines_total": 200,
+        "max_tests": 1
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.05644402634054563,
+          "files_used": 3,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 60,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13551401869158877,
+          "files_used": 3,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 145,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.06255835667600373,
+          "files_used": 3,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 67,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.08483880056937938,
+      "files_used": 3,
+      "label": "promising+max_tests",
+      "line_recall": 1.0,
+      "lines_used": 145,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 3,
+        "max_lines_per_file": 100,
+        "max_lines_total": 200,
+        "max_tests": 0
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.05644402634054563,
+          "files_used": 3,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 60,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13551401869158877,
+          "files_used": 3,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 145,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.06255835667600373,
+          "files_used": 3,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 67,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.08483880056937938,
+      "files_used": 3,
+      "label": "promising+max_lines_per_file",
+      "line_recall": 1.0,
+      "lines_used": 145,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 3,
+        "max_lines_per_file": 50,
+        "max_lines_total": 400,
+        "max_tests": 0
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.05644402634054563,
+          "files_used": 3,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 60,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13551401869158877,
+          "files_used": 3,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 145,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.06255835667600373,
+          "files_used": 3,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 67,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.08483880056937938,
+      "files_used": 3,
+      "label": "promising+max_lines_total",
+      "line_recall": 1.0,
+      "lines_used": 145,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 3,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.05644402634054563,
+          "files_used": 3,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 60,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13551401869158877,
+          "files_used": 3,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 145,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.06255835667600373,
+          "files_used": 3,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 67,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.08483880056937938,
+      "files_used": 3,
+      "label": "max_files=3",
+      "line_recall": 1.0,
+      "lines_used": 145,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 4,
+        "max_lines_per_file": 50,
+        "max_lines_total": 200,
+        "max_tests": 0
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.07337723424270931,
+          "files_used": 4,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 78,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.15700934579439252,
+          "files_used": 4,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 168,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.07936507936507936,
+          "files_used": 4,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 85,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.1032505531340604,
+      "files_used": 4,
+      "label": "promising+max_files",
+      "line_recall": 1.0,
+      "lines_used": 168,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 4,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.07337723424270931,
+          "files_used": 4,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 78,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.15700934579439252,
+          "files_used": 4,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 168,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.07936507936507936,
+          "files_used": 4,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 85,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.1032505531340604,
+      "files_used": 4,
+      "label": "max_files=4",
+      "line_recall": 1.0,
+      "lines_used": 168,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 5,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.08090310442144873,
+          "files_used": 5,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 86,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.18037383177570093,
+          "files_used": 5,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 193,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.08496732026143791,
+          "files_used": 5,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 91,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.11541475215286252,
+      "files_used": 5,
+      "label": "max_files=5",
+      "line_recall": 1.0,
+      "lines_used": 193,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 6,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.11947318908748825,
+          "files_used": 6,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 127,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.18878504672897195,
+          "files_used": 6,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 202,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.096171802054155,
+          "files_used": 6,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 103,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.1348100126235384,
+      "files_used": 6,
+      "label": "max_files=6",
+      "line_recall": 1.0,
+      "lines_used": 202,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 7,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.1984948259642521,
+          "files_used": 7,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 211,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.2523364485981308,
+          "files_used": 7,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 270,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.12605042016806722,
+          "files_used": 7,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 135,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.1922938982434834,
+      "files_used": 7,
+      "label": "max_files=7",
+      "line_recall": 1.0,
+      "lines_used": 270,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 8,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.2737535277516463,
+          "files_used": 8,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 291,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.2906542056074766,
+          "files_used": 8,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 311,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.13725490196078433,
+          "files_used": 8,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 147,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.23388754510663576,
+      "files_used": 8,
+      "label": "max_files=8",
+      "line_recall": 1.0,
+      "lines_used": 311,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 9,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.36312323612417685,
+          "files_used": 9,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 386,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.32429906542056075,
+          "files_used": 9,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 347,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.17553688141923435,
+          "files_used": 9,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 188,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.28765306098799065,
+      "files_used": 9,
+      "label": "max_files=9",
+      "line_recall": 1.0,
+      "lines_used": 386,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 10,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.3715898400752587,
+          "files_used": 10,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 395,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.3990654205607477,
+          "files_used": 10,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 427,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.27824463118580767,
+          "files_used": 10,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 298,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.349633297273938,
+      "files_used": 10,
+      "label": "max_files=10",
+      "line_recall": 1.0,
+      "lines_used": 427,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 11,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.39040451552210725,
+          "files_used": 11,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 415,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.4177570093457944,
+          "files_used": 11,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 447,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.35294117647058826,
+          "files_used": 11,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 378,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.3870342337794967,
+      "files_used": 11,
+      "label": "max_files=11",
+      "line_recall": 1.0,
+      "lines_used": 447,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.11947318908748825,
+          "files_used": 6,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 127,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.18037383177570093,
+          "files_used": 5,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 193,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.17553688141923435,
+          "files_used": 9,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 188,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.15846130076080786,
+      "files_used": 9,
+      "label": "max_lines_total=200",
+      "line_recall": 1.0,
+      "lines_used": 193,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 400,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.3715898400752587,
+          "files_used": 10,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 395,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.32429906542056075,
+          "files_used": 9,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 347,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.35294117647058826,
+          "files_used": 11,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 378,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.34961002732213586,
+      "files_used": 11,
+      "label": "max_lines_total=400",
+      "line_recall": 1.0,
+      "lines_used": 395,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 600,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_total=600",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 800,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_total=800",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1000,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_total=1000",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 50,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.2596425211665099,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 276,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.3355140186915888,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 359,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.24743230625583568,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 265,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.2808629487046448,
+      "files_used": 12,
+      "label": "max_lines_per_file=50",
+      "line_recall": 1.0,
+      "lines_used": 359,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 100,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.3473389355742297,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 372,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4127247514708811,
+      "files_used": 12,
+      "label": "max_lines_per_file=100",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 150,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_per_file=150",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 200,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_per_file=200",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 250,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_per_file=250",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 300,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_per_file=300",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 350,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "max_lines_per_file=350",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 0
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.4007525870178739,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 426,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.36542056074766355,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 391,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.30532212885154064,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 327,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.35716509220569276,
+      "files_used": 12,
+      "label": "max_tests=0",
+      "line_recall": 1.0,
+      "lines_used": 426,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 1
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.4308560677328316,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 458,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.39345794392523364,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 421,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.36134453781512604,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 387,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.39521951649106374,
+      "files_used": 12,
+      "label": "max_tests=1",
+      "line_recall": 1.0,
+      "lines_used": 458,
+      "passes_recall": true
+    },
+    {
+      "budget": {
+        "max_files": 12,
+        "max_lines_per_file": 400,
+        "max_lines_total": 1200,
+        "max_tests": 2
+      },
+      "cases": [
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/active_filter.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.45625587958607716,
+          "files_used": 12,
+          "issue_number": 3,
+          "line_recall": 1.0,
+          "lines_used": 485,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/empty_state.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.43457943925233644,
+          "files_used": 12,
+          "issue_number": 2,
+          "line_recall": 1.0,
+          "lines_used": 465,
+          "missing_files": [],
+          "uncovered_lines": {}
+        },
+        {
+          "case": "/Users/zero/Documents/patchpilot/evalutation/cases/commit_grounded/task_refresh.json",
+          "context_file_recall": 1.0,
+          "efficiency": 0.44164332399626516,
+          "files_used": 12,
+          "issue_number": 1,
+          "line_recall": 1.0,
+          "lines_used": 473,
+          "missing_files": [],
+          "uncovered_lines": {}
+        }
+      ],
+      "context_file_recall": 1.0,
+      "efficiency": 0.4441595476115596,
+      "files_used": 12,
+      "label": "baseline",
+      "line_recall": 1.0,
+      "lines_used": 485,
+      "passes_recall": true
+    }
+  ],
+  "note": "Provisional calibration on three commit-grounded cases only. Production ContextBudget defaults are unchanged.",
+  "promising_per_dimension": {
+    "max_files": 3,
+    "max_lines_per_file": 50,
+    "max_lines_total": 200,
+    "max_tests": 0
+  },
+  "recommendation": "Smallest passing configuration in the sweep: max_files=3, max_lines_total=200, max_lines_per_file=50, max_tests=0. Efficiency improves by 80.9% vs baseline (1200 total lines, 12 files). Treat as provisional until approved.",
+  "reference_baseline_file": {
+    "aggregate": {
+      "cases": 3,
+      "context_file_recall": 1.0,
+      "efficiency": 0.4825,
+      "failed": 0,
+      "line_recall": 1.0,
+      "scored": 3
+    },
+    "budget": {
+      "max_files": 12,
+      "max_lines_per_file": 400,
+      "max_lines_total": 1200,
+      "max_tests": 2
+    },
+    "cases": [
+      {
+        "case": "active_filter.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.4563,
+        "expected_files": [
+          "lib/domain/usecases/get_filtered_tasks.dart"
+        ],
+        "issue_number": 3,
+        "line_recall": 1.0
+      },
+      {
+        "case": "empty_state.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.5308,
+        "expected_files": [
+          "lib/data/datasources/task_local_data_source.dart"
+        ],
+        "issue_number": 2,
+        "line_recall": 1.0
+      },
+      {
+        "case": "task_refresh.json",
+        "context_file_recall": 1.0,
+        "efficiency": 0.4603,
+        "expected_files": [
+          "lib/presentation/bloc/task_bloc.dart"
+        ],
+        "issue_number": 1,
+        "line_recall": 1.0
+      }
+    ],
+    "note": "Provisional baseline with default ContextBudget. Diagnosis is a live model call; ranking uses pinned signals."
+  }
+}

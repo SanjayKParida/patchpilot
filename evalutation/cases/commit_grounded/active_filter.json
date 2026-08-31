@@ -1,0 +1,36 @@
+{
+  "owner": "SanjayKParida",
+  "repo": "patchpilot-diagnosis-demo",
+  "issue_number": 3,
+  "fix_commit": "0bf7cc5104c2c7d0546795a9885c74a48bbcc337",
+  "snapshot": "evalutation/fixtures/active_filter_pre_fix.json",
+  "title": "Active filter shows completed tasks instead of pending tasks",
+  "body": "## Summary\n\nThe Active filter is showing completed tasks instead of tasks that are\nstill pending.\n\n## Steps to reproduce\n\n1. Launch the application.\n2. Open the All filter.\n3. Confirm that both completed and incomplete tasks are visible.\n4. Select the Active filter.\n\n## Expected behavior\n\nOnly incomplete tasks should be displayed.\n\n## Actual behavior\n\nThe Active filter displays completed tasks.\n\nThe result is effectively the same as the Completed filter.\n\n## Additional context\n\n- The All filter works correctly.\n- The Completed filter works correctly.\n- Toggling a task does not fix the issue.\n- The behavior appears to be specific to the Active filter logic.",
+  "signals_note": "Captured once at case generation and pinned. Signal extraction is a model call and varies between runs, which makes ranking measurements irreproducible. Review these terms; edit them if they are wrong. Do not remove the pinning.",
+  "signals": [
+    {
+      "term": "active",
+      "type": "behavior"
+    },
+    {
+      "term": "completed",
+      "type": "behavior"
+    },
+    {
+      "term": "incomplete",
+      "type": "behavior"
+    },
+    {
+      "term": "all",
+      "type": "behavior"
+    },
+    {
+      "term": "filter logic",
+      "type": "architecture"
+    },
+    {
+      "term": "toggle",
+      "type": "behavior"
+    }
+  ]
+}

@@ -1,12 +1,21 @@
+from app.code_intelligence.registry import CodeIntelligenceRegistry
 from app.errors import IssueNotFound
 from app.services.analyze_issue_service import (
     build_analyze_issue_service,
 )
+from app.services.context_builder_service import ContextBuilderService
 from app.services.issue_diagnosis_service import IssueDiagnosisService
 from app.services.repository_search_service import (
     RepositorySearchService,
 )
+from app.services.repository_snapshot import (
+    prepare_repository_snapshot,
+    source_files_from_tracked,
+)
+from app.services.repository_snapshot_store import RepositorySnapshotStore
+from app.utils.dart.dart_structure_analyzer import DartStructureAnalyzer
 from app.utils.dart.dart_symbol_locator import DartSymbolLocator
+from app.utils.repository_graph import RepositoryGraph
 
 # Enough evidence to justify a ranking without turning the panel into
 # a log. The UI shows these behind a disclosure, not inline.
@@ -29,9 +38,22 @@ class AnalysisRunner:
     this class. It owns no pipeline logic of its own.
     """
 
-    def __init__(self, github_service, llm_service=None):
+    def __init__(
+        self,
+        github_service,
+        llm_service=None,
+        context_builder=None,
+        snapshot_store=None,
+    ):
         self.github = github_service
         self.llm = llm_service
+        self.snapshot_store = snapshot_store
+        self.context_builder = (
+            context_builder
+            or ContextBuilderService(
+                CodeIntelligenceRegistry.default(),
+            )
+        )
 
     @property
     def diagnosis_available(self):
@@ -41,7 +63,7 @@ class AnalysisRunner:
     # PUBLIC API
     # =========================================================
 
-    def run(self, owner, repo, issue_number, on_stage=None):
+    def run(self, owner, repo, issue_number, on_stage=None, ref=None):
         def stage(name):
             if on_stage:
                 on_stage(name)
@@ -50,7 +72,19 @@ class AnalysisRunner:
         issue = self._fetch_issue(owner, repo, issue_number)
 
         stage("fetching_source")
-        files = self.github.get_repository_source_files(owner, repo)
+        # Pin once. Ranking reads language source derived from the
+        # full tracked tree at this SHA — including files ranking
+        # never sees (pubspec.yaml). Never a later HEAD.
+        store = self.snapshot_store or RepositorySnapshotStore()
+        commit_sha, tracked, _status = prepare_repository_snapshot(
+            self.github,
+            store,
+            owner,
+            repo,
+            ref=ref,
+            wait=True,
+        )
+        files = source_files_from_tracked(tracked)
 
         stage("extracting_signals")
         service = build_analyze_issue_service(
@@ -74,6 +108,11 @@ class AnalysisRunner:
             # off the analysis payload and served per file, because a
             # repository's source does not belong in a poll response.
             "sources": self._sources(analysis, files),
+            # Full pinned tree for PatchValidator only. Never ranked,
+            # never diagnosed, never returned on the poll payload.
+            "snapshot": self._file_map(tracked),
+            "snapshot_commit": commit_sha,
+            "commit_sha": commit_sha,
             "issue": {
                 "number": issue.get("number"),
                 "title": issue.get("title") or "",
@@ -86,6 +125,8 @@ class AnalysisRunner:
             "relevant_files": self._describe(analysis),
             "diagnosis": None,
             "diagnosis_error": None,
+            "context_package": None,
+            "context_error": None,
         }
 
         # Retained so a follow-up question can be answered against the
@@ -121,6 +162,24 @@ class AnalysisRunner:
             self.attach_locations(diagnosis, files)
 
             result["diagnosis"] = diagnosis
+
+            stage("building_context")
+
+            try:
+                context_package = self._build_context_package(
+                    issue=result["issue"],
+                    diagnosis=diagnosis,
+                    analysis=analysis,
+                    files=files,
+                )
+                result["context_package"] = (
+                    context_package.to_dict()
+                )
+
+            except Exception as e:
+                # Diagnosis succeeded and is worth returning on its own.
+                # A context failure must not discard it.
+                result["context_error"] = str(e)
 
         except Exception as e:
             # Retrieval succeeded and is worth returning on its own.
@@ -178,6 +237,39 @@ class AnalysisRunner:
         )
 
         return diagnosis
+
+    def _build_context_package(
+        self,
+        issue,
+        diagnosis,
+        analysis,
+        files,
+    ):
+        """
+        Assemble bounded context from the same production inputs the
+        offline benchmark uses.
+        """
+
+        graph = RepositoryGraph(
+            DartStructureAnalyzer().analyze_repository(files)
+        )
+
+        return self.context_builder.build(
+            issue=issue,
+            diagnosis=diagnosis,
+            ranked=analysis["ranked"],
+            direct_evidence=analysis["direct_evidence"],
+            graph=graph,
+            files=files,
+        )
+
+    @staticmethod
+    def _file_map(files):
+        return {
+            file["path"]: file.get("content", "")
+            for file in files
+            if file.get("path")
+        }
 
     @staticmethod
     def _sources(analysis, files):

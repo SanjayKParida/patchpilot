@@ -1,0 +1,49 @@
+{
+  "aggregate": {
+    "cases": 3,
+    "context_file_recall": 1.0,
+    "efficiency": 0.4825,
+    "failed": 0,
+    "line_recall": 1.0,
+    "scored": 3
+  },
+  "budget": {
+    "max_files": 12,
+    "max_lines_per_file": 400,
+    "max_lines_total": 1200,
+    "max_tests": 2
+  },
+  "cases": [
+    {
+      "case": "active_filter.json",
+      "context_file_recall": 1.0,
+      "efficiency": 0.4563,
+      "expected_files": [
+        "lib/domain/usecases/get_filtered_tasks.dart"
+      ],
+      "issue_number": 3,
+      "line_recall": 1.0
+    },
+    {
+      "case": "empty_state.json",
+      "context_file_recall": 1.0,
+      "efficiency": 0.5308,
+      "expected_files": [
+        "lib/data/datasources/task_local_data_source.dart"
+      ],
+      "issue_number": 2,
+      "line_recall": 1.0
+    },
+    {
+      "case": "task_refresh.json",
+      "context_file_recall": 1.0,
+      "efficiency": 0.4603,
+      "expected_files": [
+        "lib/presentation/bloc/task_bloc.dart"
+      ],
+      "issue_number": 1,
+      "line_recall": 1.0
+    }
+  ],
+  "note": "Provisional baseline with default ContextBudget. Diagnosis is a live model call; ranking uses pinned signals."
+}

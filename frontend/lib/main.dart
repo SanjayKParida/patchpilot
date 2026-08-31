@@ -6,6 +6,9 @@ import 'screens/diagnosis_screen.dart';
 import 'screens/issues_screen.dart';
 import 'services/analysis_cache.dart';
 import 'services/api_client.dart';
+import 'services/browser_location.dart';
+import 'services/github_redirect.dart';
+import 'services/session_token.dart';
 import 'theme.dart';
 
 void main() {
@@ -13,7 +16,18 @@ void main() {
 }
 
 class PatchPilotApp extends StatelessWidget {
-  const PatchPilotApp({super.key});
+  final ApiClient? api;
+  final GithubRedirect? redirect;
+  final bool? refreshGrantsOnStart;
+  final String? initialAuthError;
+
+  const PatchPilotApp({
+    super.key,
+    this.api,
+    this.redirect,
+    this.refreshGrantsOnStart,
+    this.initialAuthError,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +35,12 @@ class PatchPilotApp extends StatelessWidget {
       title: 'PatchPilot',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
-      home: const AppShell(),
+      home: AppShell(
+        api: api,
+        redirect: redirect,
+        refreshGrantsOnStart: refreshGrantsOnStart,
+        initialAuthError: initialAuthError,
+      ),
     );
   }
 }
@@ -29,25 +48,111 @@ class PatchPilotApp extends StatelessWidget {
 /// Navigation for the whole product.
 ///
 /// Dashboard -> Issues -> Diagnosis, with back at every step. A
-/// Navigator stack is all this needs; there are three screens and the
-/// only shared state is the current repository and issue.
+/// Navigator stack is all this needs; the only shared state is the
+/// current repository, issue, and PatchPilot session.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final ApiClient? api;
+  final GithubRedirect? redirect;
+  final bool? refreshGrantsOnStart;
+  final String? initialAuthError;
+
+  const AppShell({
+    super.key,
+    this.api,
+    this.redirect,
+    this.refreshGrantsOnStart,
+    this.initialAuthError,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  final _api = ApiClient();
+  late final ApiClient _api;
+  late final GithubRedirect _redirect;
 
-  // Session-scoped, so returning to an issue shows the analysis
-  // already produced instead of paying for it again.
+  final _session = ValueNotifier<AuthUser?>(null);
   final _cache = AnalysisCache();
-
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   Repository? _repository;
+  bool _authReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = widget.api ?? ApiClient();
+    _redirect = widget.redirect ?? GithubRedirect();
+    _captureSessionFromRedirect();
+    _loadSession();
+  }
+
+  void _captureSessionFromRedirect() {
+    final location = BrowserLocation();
+    final sessionId = sessionIdFromFragment(location.fragment);
+    if (sessionId == null) return;
+    _api.storeSessionToken(sessionId);
+    location.replaceWithoutFragment();
+  }
+
+  @override
+  void dispose() {
+    _session.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSession() async {
+    try {
+      final me = await _api.getMe();
+      if (!mounted) return;
+      _session.value = me.authenticated ? me.user : null;
+      setState(() => _authReady = true);
+    } catch (_) {
+      if (!mounted) return;
+      _session.value = null;
+      setState(() => _authReady = true);
+    }
+  }
+
+  Future<void> _connectGithub() async {
+    String? returnTo;
+    final base = Uri.base;
+    if (base.scheme == 'http' || base.scheme == 'https') {
+      returnTo = base.origin;
+    }
+    final url = await _api.startGithubLogin(returnTo: returnTo);
+    if (url.isEmpty) {
+      throw const ApiException('GitHub did not return an authorization URL.');
+    }
+    _redirect.go(url);
+  }
+
+  Future<void> _manageGithub() async {
+    String? returnTo;
+    final base = Uri.base;
+    if (base.scheme == 'http' || base.scheme == 'https') {
+      returnTo = base.origin;
+    }
+    final url = await _api.startGithubInstall(returnTo: returnTo);
+    if (url.isEmpty) {
+      throw const ApiException(
+        'GitHub did not return an installation URL.',
+      );
+    }
+    _redirect.go(url);
+  }
+
+  Future<void> _logout() async {
+    try {
+      await _api.logout();
+    } on ApiException {
+      // Local session still clears so the UI cannot get stuck.
+    }
+    _api.clearSessionToken();
+    if (!mounted) return;
+    _session.value = null;
+  }
 
   void _openIssues(Repository repository) {
     setState(() => _repository = repository);
@@ -64,7 +169,7 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _openDiagnosis(Issue issue) {
+  void _openDiagnosis(Issue issue, {String? ref}) {
     final repository = _repository;
     if (repository == null) return;
 
@@ -75,6 +180,7 @@ class _AppShellState extends State<AppShell> {
           cache: _cache,
           repository: repository,
           issue: issue,
+          ref: ref,
           onBack: () => _navigatorKey.currentState?.pop(),
         ),
       ),
@@ -83,12 +189,32 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_authReady) {
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
     return Navigator(
       key: _navigatorKey,
       onGenerateRoute: (_) => MaterialPageRoute<void>(
         builder: (_) => DashboardScreen(
           api: _api,
+          session: _session,
           onRepositorySelected: _openIssues,
+          onConnectGithub: _connectGithub,
+          onManageGithub: _manageGithub,
+          onLogout: _logout,
+          refreshGrantsOnStart: widget.refreshGrantsOnStart ??
+              Uri.base.queryParameters.containsKey('connected'),
+          initialAuthError: widget.initialAuthError ??
+              Uri.base.queryParameters['auth_error'],
         ),
       ),
     );
