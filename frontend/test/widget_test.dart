@@ -7,11 +7,12 @@ import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/main.dart';
 import 'package:patchpilot_web/services/api_client.dart';
-import 'package:patchpilot_web/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/common.dart';
 
 void main() {
-  testWidgets('landing screen offers the demo without GitHub login',
-      (tester) async {
+  testWidgets('landing screen offers the demo without GitHub login', (
+    tester,
+  ) async {
     final api = ApiClient(
       client: MockClient((request) async {
         if (request.url.path.endsWith('/auth/me')) {

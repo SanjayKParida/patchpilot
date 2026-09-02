@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:patchpilot_web/models/models.dart';
-import 'package:patchpilot_web/theme.dart';
-import 'package:patchpilot_web/widgets/why_this_file.dart';
+import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/features/repair/diagnosis/widgets/why_this_file.dart';
 
 /// The claim this widget makes is "here is why the ranking put this
 /// file here, and you can go check". These tests hold it to that.
@@ -45,8 +45,7 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('shows the file and how many signals it matched',
-      (tester) async {
+  testWidgets('shows the file and how many signals it matched', (tester) async {
     await _pump(tester, _file());
 
     expect(find.text('car_list_screen.dart'), findsOneWidget);
@@ -78,8 +77,7 @@ void main() {
     expect(find.text('L20'), findsOneWidget);
   });
 
-  testWidgets('structural edges are shown with their source',
-      (tester) async {
+  testWidgets('structural edges are shown with their source', (tester) async {
     await _pump(
       tester,
       _file(
@@ -96,23 +94,18 @@ void main() {
     await tester.tap(find.text('Why this file?'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Structural relationships'.toUpperCase()),
-        findsOneWidget);
+    expect(find.text('Structural relationships'.toUpperCase()), findsOneWidget);
 
     // The edge is composed of TextSpans, so the finder has to be told
     // to look inside rich text.
-    expect(
-      find.textContaining('imports', findRichText: true),
-      findsOneWidget,
-    );
+    expect(find.textContaining('imports', findRichText: true), findsOneWidget);
     expect(
       find.textContaining('main.dart', findRichText: true),
       findsOneWidget,
     );
   });
 
-  testWidgets('tapping evidence asks to open that exact line',
-      (tester) async {
+  testWidgets('tapping evidence asks to open that exact line', (tester) async {
     int? openedLine;
     String? openedReason;
 
@@ -142,8 +135,7 @@ void main() {
     expect(openedReason, 'behavior_flow CarsLoading');
   });
 
-  testWidgets('a file with no evidence cannot be expanded',
-      (tester) async {
+  testWidgets('a file with no evidence cannot be expanded', (tester) async {
     await _pump(tester, _file());
 
     expect(find.text('No evidence recorded'), findsOneWidget);

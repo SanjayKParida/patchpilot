@@ -6,13 +6,18 @@ because they are about which adapter is chosen, not about how the
 builder ranks or slices.
 """
 
+import inspect
 import json
 from pathlib import Path
 
-from app.code_intelligence.dart_adapter import DartCodeIntelligence
+from app.code_intelligence.adapters.dart import DartCodeIntelligence
+from app.code_intelligence.adapters.javascript import JavaScriptCodeIntelligence
+from app.code_intelligence.adapters.python import PythonCodeIntelligence
+from app.code_intelligence.adapters.typescript import TypeScriptCodeIntelligence
 from app.code_intelligence.null_adapter import NullCodeIntelligence
-from app.code_intelligence.protocol import CodeIntelligence
+from app.code_intelligence.protocol import CodeIntelligence, supports
 from app.code_intelligence.registry import CodeIntelligenceRegistry
+from app.services.analysis_runner import AnalysisRunner
 from app.services.context_builder_service import ContextBuilderService
 from app.services.context_budget import ContextBudget
 
@@ -55,7 +60,7 @@ def test_dart_file_selects_the_dart_adapter():
 
 
 def test_unsupported_extension_selects_the_null_adapter():
-    chosen = registry().for_path("app/main.py")
+    chosen = registry().for_path("app/main.rb")
     assert isinstance(chosen, NullCodeIntelligence)
     assert chosen.name == "unknown"
 
@@ -72,12 +77,19 @@ def test_mixed_language_files_select_adapters_independently():
     dart = intel.for_path("lib/a.dart")
     python = intel.for_path("tool/script.py")
     typescript = intel.for_path("web/app.ts")
+    javascript = intel.for_path("web/app.js")
 
     assert dart is intel.for_path("lib/b.dart")
-    assert python is typescript
+    assert python is intel.for_path("app/other.py")
+    assert javascript is intel.for_path("web/other.js")
     assert dart is not python
+    assert dart is not typescript
+    assert python is not typescript
+    assert python is not javascript
     assert isinstance(dart, DartCodeIntelligence)
-    assert isinstance(python, NullCodeIntelligence)
+    assert isinstance(typescript, TypeScriptCodeIntelligence)
+    assert isinstance(python, PythonCodeIntelligence)
+    assert isinstance(javascript, JavaScriptCodeIntelligence)
 
 
 # ============================================================
@@ -86,7 +98,7 @@ def test_mixed_language_files_select_adapters_independently():
 
 def test_unsupported_language_still_produces_a_valid_package():
     service = ContextBuilderService(registry())
-    path = "app/main.py"
+    path = "app/main.rb"
 
     pkg = service.build(
         diagnosis={
@@ -149,8 +161,8 @@ def test_mixed_repository_labels_slices_per_language():
     by_path = {item.path: item for item in pkg.slices}
     assert by_path["lib/a.dart"].language == "dart"
     assert by_path["lib/a.dart"].adapter == "DartCodeIntelligence"
-    assert by_path["tool/script.py"].language == "unknown"
-    assert by_path["tool/script.py"].adapter == "NullCodeIntelligence"
+    assert by_path["tool/script.py"].language == "python"
+    assert by_path["tool/script.py"].adapter == "PythonCodeIntelligence"
     assert pkg.language == "mixed"
     assert pkg.adapter == "mixed"
 
@@ -182,3 +194,98 @@ def test_existing_dart_behaviour_is_unchanged_through_the_registry():
         6,
         registry_index,
     )
+
+
+# ============================================================
+# PLACEHOLDER BOUNDARIES
+# ============================================================
+
+def _registered(intel, cls):
+    matches = [adapter for adapter in intel.adapters if isinstance(adapter, cls)]
+    assert len(matches) == 1, f"expected one {cls.__name__} in the registry"
+    return matches[0]
+
+
+def test_typescript_adapter_is_selected_for_typescript_files():
+    intel = registry()
+    chosen = _registered(intel, TypeScriptCodeIntelligence)
+
+    assert chosen.name == "typescript"
+    assert chosen.has_intelligence is True
+    assert supports(chosen, "src/app.ts")
+    assert supports(chosen, "src/app.tsx")
+    assert isinstance(intel.for_path("src/app.ts"), TypeScriptCodeIntelligence)
+    assert isinstance(intel.for_path("src/app.tsx"), TypeScriptCodeIntelligence)
+    assert intel.for_path("src/app.ts") is chosen
+    assert not isinstance(intel.for_path("src/app.ts"), NullCodeIntelligence)
+    assert isinstance(intel.for_path("src/app.js"), JavaScriptCodeIntelligence)
+
+
+def test_javascript_adapter_is_selected_for_javascript_files():
+    intel = registry()
+    chosen = _registered(intel, JavaScriptCodeIntelligence)
+
+    assert chosen.name == "javascript"
+    assert chosen.has_intelligence is True
+    assert supports(chosen, "src/app.js")
+    assert supports(chosen, "src/app.jsx")
+    assert isinstance(intel.for_path("src/app.js"), JavaScriptCodeIntelligence)
+    assert isinstance(intel.for_path("src/app.jsx"), JavaScriptCodeIntelligence)
+    assert intel.for_path("src/app.js") is chosen
+    assert not isinstance(intel.for_path("src/app.js"), NullCodeIntelligence)
+    assert isinstance(intel.for_path("src/app.ts"), TypeScriptCodeIntelligence)
+
+
+def test_python_adapter_is_selected_for_python_files():
+    intel = registry()
+    chosen = _registered(intel, PythonCodeIntelligence)
+
+    assert chosen.name == "python"
+    assert chosen.has_intelligence is True
+    assert supports(chosen, "app/main.py")
+    assert isinstance(intel.for_path("app/main.py"), PythonCodeIntelligence)
+    assert intel.for_path("app/main.py") is chosen
+    assert not isinstance(intel.for_path("app/main.py"), NullCodeIntelligence)
+    assert isinstance(intel.for_path("src/app.js"), JavaScriptCodeIntelligence)
+
+
+def test_registry_selection_is_deterministic():
+    first = registry()
+    second = registry()
+
+    assert [type(adapter).__name__ for adapter in first.adapters] == [
+        "DartCodeIntelligence",
+        "TypeScriptCodeIntelligence",
+        "JavaScriptCodeIntelligence",
+        "PythonCodeIntelligence",
+    ]
+    assert [type(adapter).__name__ for adapter in first.adapters] == [
+        type(adapter).__name__ for adapter in second.adapters
+    ]
+
+    dart_path = "lib/a.dart"
+    assert first.for_path(dart_path) is first.for_path("lib/b.dart")
+    assert type(first.for_path(dart_path)) is type(second.for_path(dart_path))
+    assert first.for_path("app/main.py") is first.for_path("pkg/mod.py")
+    assert type(first.for_path("app/main.py")) is PythonCodeIntelligence
+    assert type(first.for_path("web/app.ts")) is TypeScriptCodeIntelligence
+    assert type(second.for_path("web/app.js")) is JavaScriptCodeIntelligence
+
+
+def test_consumers_do_not_select_adapters():
+    """ContextBuilder and the analysis runner never name a language."""
+
+    builder_source = inspect.getsource(ContextBuilderService)
+    runner_source = inspect.getsource(AnalysisRunner)
+
+    for name in (
+        "DartCodeIntelligence",
+        "TypeScriptCodeIntelligence",
+        "JavaScriptCodeIntelligence",
+        "PythonCodeIntelligence",
+        "NullCodeIntelligence",
+    ):
+        assert name not in builder_source
+        assert name not in runner_source
+
+    assert "for_path" in builder_source

@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/models/models.dart';
-import 'package:patchpilot_web/screens/diagnosis_screen.dart';
+import 'package:patchpilot_web/features/repair/diagnosis/screens/diagnosis_screen.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
-import 'package:patchpilot_web/theme.dart';
+import 'package:patchpilot_web/core/theme/app_theme.dart';
 
 void main() {
   test('parses requested ref and resolved commit from the API', () {
@@ -72,9 +72,6 @@ void main() {
     expect(find.textContaining('Analyzed at f0bfc5b317f4'), findsOneWidget);
     expect(find.textContaining('Patching f0bfc5b317f4'), findsOneWidget);
     expect(find.text('Generate patch'), findsOneWidget);
-    expect(
-      find.text('Active filter uses task.isCompleted.'),
-      findsOneWidget,
-    );
+    expect(find.text('Active filter uses task.isCompleted.'), findsOneWidget);
   });
 }

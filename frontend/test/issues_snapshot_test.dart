@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/models/models.dart';
-import 'package:patchpilot_web/screens/issues_screen.dart';
+import 'package:patchpilot_web/features/repositories/screens/issues_screen.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
 http.Response _json(Object body, [int status = 200]) {
@@ -47,7 +47,10 @@ void main() {
       }),
     );
 
-    final snapshot = await api.prepareRepositorySnapshot('octocat', 'hello-world');
+    final snapshot = await api.prepareRepositorySnapshot(
+      'octocat',
+      'hello-world',
+    );
 
     expect(snapshot.isReady, isTrue);
     expect(snapshot.fileCount, 12);
@@ -62,13 +65,11 @@ void main() {
         if (request.method == 'POST' &&
             request.url.path.endsWith('/snapshot')) {
           posts += 1;
-          return _json(
-            {'detail': 'Repository snapshot preparation is already running'},
-            409,
-          );
+          return _json({
+            'detail': 'Repository snapshot preparation is already running',
+          }, 409);
         }
-        if (request.method == 'GET' &&
-            request.url.path.endsWith('/snapshot')) {
+        if (request.method == 'GET' && request.url.path.endsWith('/snapshot')) {
           gets += 1;
           if (gets < 2) {
             return _json({
@@ -113,7 +114,7 @@ void main() {
               'title': 'Spinner stuck',
               'body': '',
               'state': 'open',
-            }
+            },
           ]);
         }
         if (request.method == 'POST' &&
@@ -153,12 +154,7 @@ void main() {
       client: MockClient((request) async {
         if (request.url.path.endsWith('/issues')) {
           return _json([
-            {
-              'number': 2,
-              'title': 'Empty state',
-              'body': '',
-              'state': 'open',
-            }
+            {'number': 2, 'title': 'Empty state', 'body': '', 'state': 'open'},
           ]);
         }
         if (request.url.path.endsWith('/snapshot')) {
@@ -187,8 +183,9 @@ void main() {
     );
   });
 
-  testWidgets('shows download progress while the snapshot is preparing',
-      (tester) async {
+  testWidgets('shows download progress while the snapshot is preparing', (
+    tester,
+  ) async {
     final gate = Completer<http.Response>();
     final api = ApiClient(
       client: MockClient((request) async {
@@ -199,11 +196,10 @@ void main() {
               'title': 'Spinner stuck',
               'body': '',
               'state': 'open',
-            }
+            },
           ]);
         }
-        if (request.method == 'GET' &&
-            request.url.path.endsWith('/snapshot')) {
+        if (request.method == 'GET' && request.url.path.endsWith('/snapshot')) {
           return _json({
             'commit_sha': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             'status': 'running',
@@ -242,14 +238,16 @@ void main() {
     );
     expect(analyze.onPressed, isNull);
 
-    gate.complete(_json({
-      'commit_sha': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      'status': 'ready',
-      'file_count': 100,
-      'progress_percent': 100,
-      'files_downloaded': 100,
-      'files_total': 100,
-    }));
+    gate.complete(
+      _json({
+        'commit_sha': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'status': 'ready',
+        'file_count': 100,
+        'progress_percent': 100,
+        'files_downloaded': 100,
+        'files_total': 100,
+      }),
+    );
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Repository ready at aaaaaaa'), findsOneWidget);

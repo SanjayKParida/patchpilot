@@ -17,6 +17,8 @@ class NullCodeIntelligence:
 
     name = "unknown"
 
+    has_intelligence = False
+
     def build_index(self, files: Sequence[dict]) -> Any:
         return {
             "files": [file.get("path") for file in files],

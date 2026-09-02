@@ -7,8 +7,12 @@ is that object when the caller has a real repository: it picks an
 adapter per path, indexes each language's files separately, and
 forwards every other call to the adapter that owns the file.
 
-Unknown extensions resolve to NullCodeIntelligence. That is a normal
+Unknown extensions, and registered languages whose adapters do not yet
+have intelligence, resolve to NullCodeIntelligence. That is a normal
 path, not an error.
+
+Adding a language is a localized change: implement
+adapters/<language>/adapter.py and register it in default().
 """
 
 from app.code_intelligence.null_adapter import NullCodeIntelligence
@@ -55,18 +59,45 @@ class CodeIntelligenceRegistry:
         self._adapters = tuple(adapters or ())
         self._fallback = fallback or NullCodeIntelligence()
 
+    @property
+    def adapters(self):
+        """Registered adapters, in selection order. Excludes the fallback."""
+
+        return self._adapters
+
     @classmethod
     def default(cls):
-        """Production registry: Dart, then the null fallback."""
+        """
+        Production registry.
 
-        from app.code_intelligence.dart_adapter import DartCodeIntelligence
+        Dart, TypeScript, JavaScript, and Python are implemented.
+        """
 
-        return cls(adapters=(DartCodeIntelligence(),))
+        from app.code_intelligence.adapters.dart import DartCodeIntelligence
+        from app.code_intelligence.adapters.javascript import (
+            JavaScriptCodeIntelligence,
+        )
+        from app.code_intelligence.adapters.python import PythonCodeIntelligence
+        from app.code_intelligence.adapters.typescript import (
+            TypeScriptCodeIntelligence,
+        )
+
+        return cls(
+            adapters=(
+                DartCodeIntelligence(),
+                TypeScriptCodeIntelligence(),
+                JavaScriptCodeIntelligence(),
+                PythonCodeIntelligence(),
+            )
+        )
 
     def for_path(self, path):
         for adapter in self._adapters:
-            if supports(adapter, path):
+            if not supports(adapter, path):
+                continue
+            if getattr(adapter, "has_intelligence", True):
                 return adapter
+            return self._fallback
         return self._fallback
 
     # =========================================================

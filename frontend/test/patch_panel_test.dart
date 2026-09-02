@@ -7,8 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/services/api_client.dart';
-import 'package:patchpilot_web/theme.dart';
-import 'package:patchpilot_web/widgets/patch_panel.dart';
+import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/features/repair/patch/widgets/patch_panel.dart';
 
 Map<String, dynamic> _hunk({
   int start = 2,
@@ -39,7 +39,8 @@ Map<String, dynamic> _proposalJson({
     'confidence': 0.9,
     'warnings': warnings,
     'errors': errors,
-    'files': files ??
+    'files':
+        files ??
         [
           {
             'path': 'lib/bloc/task_bloc.dart',
@@ -68,7 +69,8 @@ Map<String, dynamic> _validationJson({
     'unavailable_reason': unavailable,
     'errors': errors,
     'warnings': warnings,
-    'commands': commands ??
+    'commands':
+        commands ??
         [
           {
             'name': 'pub_get',
@@ -188,10 +190,9 @@ ApiClient _client(_Script script) {
 
       if (request.method == 'GET' && isDeliver) {
         if (script.getDelivery == null) {
-          return _json(
-            {'detail': 'No patch delivery has been attempted'},
-            script.getDeliveryStatus,
-          );
+          return _json({
+            'detail': 'No patch delivery has been attempted',
+          }, script.getDeliveryStatus);
         }
         return _json(script.getDelivery, script.getDeliveryStatus);
       }
@@ -202,10 +203,9 @@ ApiClient _client(_Script script) {
           return script.deliverGate!.future;
         }
         if (script.postDeliveryStatus >= 400) {
-          return _json(
-            {'detail': script.postDeliveryDetail ?? 'Delivery failed'},
-            script.postDeliveryStatus,
-          );
+          return _json({
+            'detail': script.postDeliveryDetail ?? 'Delivery failed',
+          }, script.postDeliveryStatus);
         }
         return _json(
           script.postDelivery ?? _deliveryJson(),
@@ -215,10 +215,9 @@ ApiClient _client(_Script script) {
 
       if (request.method == 'GET' && isApprove) {
         if (script.getApproval == null) {
-          return _json(
-            {'detail': 'This patch has not been approved'},
-            script.getApprovalStatus,
-          );
+          return _json({
+            'detail': 'This patch has not been approved',
+          }, script.getApprovalStatus);
         }
         return _json(script.getApproval, script.getApprovalStatus);
       }
@@ -226,10 +225,9 @@ ApiClient _client(_Script script) {
       if (request.method == 'POST' && isApprove) {
         script.approveCalls += 1;
         if (script.postApprovalStatus >= 400) {
-          return _json(
-            {'detail': 'The patch has not been validated'},
-            script.postApprovalStatus,
-          );
+          return _json({
+            'detail': 'The patch has not been validated',
+          }, script.postApprovalStatus);
         }
         return _json(
           script.postApproval ?? _approvalJson(),
@@ -239,10 +237,9 @@ ApiClient _client(_Script script) {
 
       if (request.method == 'GET' && isValidate) {
         if (script.getValidation == null) {
-          return _json(
-            {'detail': 'No patch validation is available'},
-            script.getValidationStatus,
-          );
+          return _json({
+            'detail': 'No patch validation is available',
+          }, script.getValidationStatus);
         }
         return _json(script.getValidation, script.getValidationStatus);
       }
@@ -279,10 +276,9 @@ ApiClient _client(_Script script) {
           return script.generateGate!.future;
         }
         if (script.postPatchStatus >= 400) {
-          return _json(
-            {'detail': script.postPatchDetail ?? 'Patch generation failed'},
-            script.postPatchStatus,
-          );
+          return _json({
+            'detail': script.postPatchDetail ?? 'Patch generation failed',
+          }, script.postPatchStatus);
         }
         return _json(
           script.postPatch ?? _proposalJson(),
@@ -331,8 +327,9 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('full review flow: generate, inspect diff, validate, approve',
-      (tester) async {
+  testWidgets('full review flow: generate, inspect diff, validate, approve', (
+    tester,
+  ) async {
     final script = _Script()
       ..postPatch = _proposalJson()
       ..postValidation = _validationJson();
@@ -386,8 +383,9 @@ void main() {
     expect(find.text('Create draft PR'), findsNothing);
   });
 
-  testWidgets('generate patch success renders the proposal diff',
-      (tester) async {
+  testWidgets('generate patch success renders the proposal diff', (
+    tester,
+  ) async {
     final script = _Script()..postPatch = _proposalJson();
 
     await _pump(tester, _client(script));
@@ -419,8 +417,9 @@ void main() {
     );
   });
 
-  testWidgets('double tap generate does not start a second request',
-      (tester) async {
+  testWidgets('double tap generate does not start a second request', (
+    tester,
+  ) async {
     final gate = Completer<http.Response>();
     final script = _Script()
       ..postPatch = _proposalJson()
@@ -443,30 +442,33 @@ void main() {
     expect(find.text('Generated'), findsOneWidget);
   });
 
-  testWidgets('generate waits for an in-progress proposal instead of erroring',
-      (tester) async {
-    final script = _Script()
-      ..postPatchStatus = 409
-      ..postPatchDetail =
-          'Patch generation is already running for this analysis'
-      ..getPatchStatus = 409
-      ..getPatchReadyAfter = 2;
+  testWidgets(
+    'generate waits for an in-progress proposal instead of erroring',
+    (tester) async {
+      final script = _Script()
+        ..postPatchStatus = 409
+        ..postPatchDetail =
+            'Patch generation is already running for this analysis'
+        ..getPatchStatus = 409
+        ..getPatchReadyAfter = 2;
 
-    await _pump(tester, _client(script));
-    await _settle(tester);
+      await _pump(tester, _client(script));
+      await _settle(tester);
 
-    expect(find.text('Generate patch'), findsOneWidget);
+      expect(find.text('Generate patch'), findsOneWidget);
 
-    await tester.tap(find.text('Generate patch'));
-    await _settle(tester);
+      await tester.tap(find.text('Generate patch'));
+      await _settle(tester);
 
-    expect(script.generateCalls, 1);
-    expect(find.text('Generated'), findsOneWidget);
-    expect(find.text('The API did not respond in time.'), findsNothing);
-  });
+      expect(script.generateCalls, 1);
+      expect(find.text('Generated'), findsOneWidget);
+      expect(find.text('The API did not respond in time.'), findsNothing);
+    },
+  );
 
-  testWidgets('in-progress cached GET is not shown as a timeout',
-      (tester) async {
+  testWidgets('in-progress cached GET is not shown as a timeout', (
+    tester,
+  ) async {
     final script = _Script()..getPatchStatus = 409;
 
     await _pump(tester, _client(script));
@@ -477,8 +479,9 @@ void main() {
     expect(find.text('Generate patch'), findsOneWidget);
   });
 
-  testWidgets('cached patch retrieval shows the stored proposal',
-      (tester) async {
+  testWidgets('cached patch retrieval shows the stored proposal', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson()
       ..getPatchStatus = 200;
@@ -540,8 +543,9 @@ void main() {
     expect(find.text('hunk overlaps another edit'), findsOneWidget);
   });
 
-  testWidgets('insufficient context explains why no patch was produced',
-      (tester) async {
+  testWidgets('insufficient context explains why no patch was produced', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson(
         status: 'insufficient_context',
@@ -562,8 +566,9 @@ void main() {
     expect(find.text('Approve patch'), findsNothing);
   });
 
-  testWidgets('ambiguous proposal cannot be validated or approved',
-      (tester) async {
+  testWidgets('ambiguous proposal cannot be validated or approved', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson(
         status: 'ambiguous',
@@ -597,10 +602,7 @@ void main() {
     await _settle(tester);
 
     expect(find.text('Empty proposal'), findsOneWidget);
-    expect(
-      find.textContaining('returned no file changes'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('returned no file changes'), findsOneWidget);
     expect(find.text('Validate patch'), findsNothing);
     expect(find.text('Approve patch'), findsNothing);
   });
@@ -627,8 +629,9 @@ void main() {
     expect(find.text('Approve patch'), findsNothing);
   });
 
-  testWidgets('shows validation loading then a pass with command results',
-      (tester) async {
+  testWidgets('shows validation loading then a pass with command results', (
+    tester,
+  ) async {
     final gate = Completer<http.Response>();
     final script = _Script()
       ..getPatch = _proposalJson()
@@ -710,8 +713,9 @@ void main() {
     expect(find.text('Approve patch'), findsNothing);
   });
 
-  testWidgets('unavailable validation does not unlock approval',
-      (tester) async {
+  testWidgets('unavailable validation does not unlock approval', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson()
       ..getPatchStatus = 200
@@ -734,8 +738,9 @@ void main() {
     expect(find.text('Approve patch'), findsNothing);
   });
 
-  testWidgets('approval calls the API and only then allows Create draft PR',
-      (tester) async {
+  testWidgets('approval calls the API and only then allows Create draft PR', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson()
       ..getPatchStatus = 200
@@ -766,8 +771,9 @@ void main() {
     );
   });
 
-  testWidgets('pinned commit is shown in the patch review panel',
-      (tester) async {
+  testWidgets('pinned commit is shown in the patch review panel', (
+    tester,
+  ) async {
     const sha = 'f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c';
     final script = _Script();
 
@@ -778,8 +784,9 @@ void main() {
     expect(find.text('Generate patch'), findsOneWidget);
   });
 
-  testWidgets('clicking a changed file reports its path and line',
-      (tester) async {
+  testWidgets('clicking a changed file reports its path and line', (
+    tester,
+  ) async {
     final opened = <String>[];
     final lines = <int?>[];
     final script = _Script()
@@ -812,8 +819,9 @@ void main() {
     expect(lines, [2]);
   });
 
-  testWidgets('approval API failure keeps Create draft PR hidden',
-      (tester) async {
+  testWidgets('approval API failure keeps Create draft PR hidden', (
+    tester,
+  ) async {
     final script = _Script()
       ..getPatch = _proposalJson()
       ..getPatchStatus = 200
@@ -836,8 +844,9 @@ void main() {
     expect(find.text('lib/bloc/task_bloc.dart'), findsOneWidget);
   });
 
-  testWidgets('shows delivery progress while the draft PR is created',
-      (tester) async {
+  testWidgets('shows delivery progress while the draft PR is created', (
+    tester,
+  ) async {
     final gate = Completer<http.Response>();
     final script = _Script()
       ..getPatch = _proposalJson()
@@ -872,41 +881,48 @@ void main() {
     expect(find.text('https://github.com/owner/repo/pull/12'), findsOneWidget);
   });
 
-  testWidgets('delivery failure at each stage keeps the patch and allows retry',
-      (tester) async {
-    for (final stage in ['apply', 'commit', 'push', 'pull_request']) {
-      final script = _Script()
-        ..getPatch = _proposalJson()
-        ..getPatchStatus = 200
-        ..getValidation = _validationJson()
-        ..getValidationStatus = 200
-        ..getApproval = _approvalJson()
-        ..getApprovalStatus = 200
-        ..postDelivery = _deliveryJson(
-          status: 'failed',
-          stage: stage,
-          prNumber: null,
-          prUrl: null,
-          commitSha: stage == 'apply' ? null : 'c' * 40,
-          branch: stage == 'apply' ? null : 'patchpilot/issue-1/deadbeef-aaaaaaaa',
-          errors: ['failed at $stage'],
+  testWidgets(
+    'delivery failure at each stage keeps the patch and allows retry',
+    (tester) async {
+      for (final stage in ['apply', 'commit', 'push', 'pull_request']) {
+        final script = _Script()
+          ..getPatch = _proposalJson()
+          ..getPatchStatus = 200
+          ..getValidation = _validationJson()
+          ..getValidationStatus = 200
+          ..getApproval = _approvalJson()
+          ..getApprovalStatus = 200
+          ..postDelivery = _deliveryJson(
+            status: 'failed',
+            stage: stage,
+            prNumber: null,
+            prUrl: null,
+            commitSha: stage == 'apply' ? null : 'c' * 40,
+            branch: stage == 'apply'
+                ? null
+                : 'patchpilot/issue-1/deadbeef-aaaaaaaa',
+            errors: ['failed at $stage'],
+          );
+
+        await _pump(tester, _client(script));
+        await _settle(tester);
+        await tester.ensureVisible(find.text('Create draft PR'));
+        await tester.tap(find.text('Create draft PR'));
+        await _settle(tester);
+
+        expect(find.textContaining('Delivery failed'), findsOneWidget);
+        expect(find.textContaining('failed at $stage'), findsOneWidget);
+        expect(find.text('emit loaded state after refresh'), findsOneWidget);
+        expect(find.text('Retry draft PR'), findsOneWidget);
+        expect(
+          find.text('https://github.com/owner/repo/pull/12'),
+          findsNothing,
         );
 
-      await _pump(tester, _client(script));
-      await _settle(tester);
-      await tester.ensureVisible(find.text('Create draft PR'));
-      await tester.tap(find.text('Create draft PR'));
-      await _settle(tester);
-
-      expect(find.textContaining('Delivery failed'), findsOneWidget);
-      expect(find.textContaining('failed at $stage'), findsOneWidget);
-      expect(find.text('emit loaded state after refresh'), findsOneWidget);
-      expect(find.text('Retry draft PR'), findsOneWidget);
-      expect(find.text('https://github.com/owner/repo/pull/12'), findsNothing);
-
-      await tester.pumpWidget(const SizedBox.shrink());
-    }
-  });
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
 
   testWidgets('retry after a failed delivery can open the PR', (tester) async {
     final script = _Script()
@@ -944,30 +960,39 @@ void main() {
     expect(find.text('Retry draft PR'), findsNothing);
   });
 
-  testWidgets('cached successful delivery is shown without creating another PR',
-      (tester) async {
-    final script = _Script()
-      ..getPatch = _proposalJson()
-      ..getPatchStatus = 200
-      ..getValidation = _validationJson()
-      ..getValidationStatus = 200
-      ..getApproval = _approvalJson()
-      ..getApprovalStatus = 200
-      ..getDelivery = _deliveryJson()
-      ..getDeliveryStatus = 200;
+  testWidgets(
+    'cached successful delivery is shown without creating another PR',
+    (tester) async {
+      final script = _Script()
+        ..getPatch = _proposalJson()
+        ..getPatchStatus = 200
+        ..getValidation = _validationJson()
+        ..getValidationStatus = 200
+        ..getApproval = _approvalJson()
+        ..getApprovalStatus = 200
+        ..getDelivery = _deliveryJson()
+        ..getDeliveryStatus = 200;
 
-    await _pump(tester, _client(script));
-    await _settle(tester);
+      await _pump(tester, _client(script));
+      await _settle(tester);
 
-    expect(script.deliverCalls, 0);
-    expect(find.text('Create draft PR'), findsNothing);
-    expect(find.text('Draft PR opened'), findsOneWidget);
-    expect(find.text('https://github.com/owner/repo/pull/12'), findsOneWidget);
-    expect(find.text('patchpilot/issue-3/f0bfc5b317f4-aaaaaaaa'), findsOneWidget);
-  });
+      expect(script.deliverCalls, 0);
+      expect(find.text('Create draft PR'), findsNothing);
+      expect(find.text('Draft PR opened'), findsOneWidget);
+      expect(
+        find.text('https://github.com/owner/repo/pull/12'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('patchpilot/issue-3/f0bfc5b317f4-aaaaaaaa'),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('delivery panel shows the pinned analyzed commit',
-      (tester) async {
+  testWidgets('delivery panel shows the pinned analyzed commit', (
+    tester,
+  ) async {
     const sha = 'f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c';
     final script = _Script()
       ..getPatch = _proposalJson()
@@ -984,8 +1009,9 @@ void main() {
     expect(find.text('Create draft PR'), findsOneWidget);
   });
 
-  testWidgets('GitHub permission failure keeps the diff and allows retry',
-      (tester) async {
+  testWidgets('GitHub permission failure keeps the diff and allows retry', (
+    tester,
+  ) async {
     const detail =
         'The GitHub token cannot create branches, commits, or pull requests '
         'for this repository. Grant Contents and Pull requests write access '
@@ -1036,38 +1062,43 @@ void main() {
     expect(find.text('Create draft PR'), findsNothing);
   });
 
-  testWidgets('http delivery failure still loads stored stage and keeps the diff',
-      (tester) async {
-    final script = _Script()
-      ..getPatch = _proposalJson()
-      ..getPatchStatus = 200
-      ..getValidation = _validationJson()
-      ..getValidationStatus = 200
-      ..getApproval = _approvalJson()
-      ..getApprovalStatus = 200
-      ..postDeliveryStatus = 502;
+  testWidgets(
+    'http delivery failure still loads stored stage and keeps the diff',
+    (tester) async {
+      final script = _Script()
+        ..getPatch = _proposalJson()
+        ..getPatchStatus = 200
+        ..getValidation = _validationJson()
+        ..getValidationStatus = 200
+        ..getApproval = _approvalJson()
+        ..getApprovalStatus = 200
+        ..postDeliveryStatus = 502;
 
-    await _pump(tester, _client(script));
-    await _settle(tester);
+      await _pump(tester, _client(script));
+      await _settle(tester);
 
-    script
-      ..getDelivery = _deliveryJson(
-        status: 'failed',
-        stage: 'commit',
-        prNumber: null,
-        prUrl: null,
-        errors: ['GitHub returned 502'],
-      )
-      ..getDeliveryStatus = 200;
+      script
+        ..getDelivery = _deliveryJson(
+          status: 'failed',
+          stage: 'commit',
+          prNumber: null,
+          prUrl: null,
+          errors: ['GitHub returned 502'],
+        )
+        ..getDeliveryStatus = 200;
 
-    await tester.ensureVisible(find.text('Create draft PR'));
-    await tester.tap(find.text('Create draft PR'));
-    await _settle(tester);
+      await tester.ensureVisible(find.text('Create draft PR'));
+      await tester.tap(find.text('Create draft PR'));
+      await _settle(tester);
 
-    expect(find.textContaining('Delivery failed (Create commit)'), findsOneWidget);
-    expect(find.text('GitHub returned 502'), findsOneWidget);
-    expect(find.text('lib/bloc/task_bloc.dart'), findsOneWidget);
-    expect(find.text('Retry draft PR'), findsOneWidget);
-    expect(find.text('Delivery failed'), findsNothing);
-  });
+      expect(
+        find.textContaining('Delivery failed (Create commit)'),
+        findsOneWidget,
+      );
+      expect(find.text('GitHub returned 502'), findsOneWidget);
+      expect(find.text('lib/bloc/task_bloc.dart'), findsOneWidget);
+      expect(find.text('Retry draft PR'), findsOneWidget);
+      expect(find.text('Delivery failed'), findsNothing);
+    },
+  );
 }

@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from app.code_intelligence.dart_adapter import DartCodeIntelligence
+from app.code_intelligence.adapters.dart import DartCodeIntelligence
 from app.code_intelligence.protocol import CodeIntelligence, supports
 from app.code_intelligence.types import Location, Reference
 from app.utils.dart.dart_structure_analyzer import DartStructureAnalyzer

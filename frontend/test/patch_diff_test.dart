@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:patchpilot_web/widgets/patch_diff.dart';
+import 'package:patchpilot_web/features/repair/patch/widgets/patch_diff.dart';
 
 void main() {
   test('empty hunks produce no lines', () {
