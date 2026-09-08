@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:syntax_highlight/syntax_highlight.dart';
 
@@ -6,18 +8,15 @@ import '../../../../core/theme/app_theme.dart';
 /// Thin wrapper around `syntax_highlight`'s [Highlighter].
 ///
 /// Loads only Dart, TypeScript, JavaScript, and Python grammars, and
-/// returns a [TextSpan] the source viewer can paint. Never uses the
-/// package's [CodeEditor]. Failures and unknown languages fall back to
-/// plain [AppTheme.mono] text.
+/// returns a [TextSpan] the source viewer / patch diff can paint. Never
+/// uses the package's [CodeEditor]. Failures and unknown languages fall
+/// back to plain [AppTheme.mono] text.
+///
+/// Theme colors match [SourceCodeViewer]'s restrained dark palette.
 class SyntaxHighlighter {
   SyntaxHighlighter._();
 
   static const _grammars = ['dart', 'typescript', 'javascript', 'python'];
-
-  static const _themeAssetPaths = [
-    'packages/syntax_highlight/themes/dark_vs.json',
-    'packages/syntax_highlight/themes/dark_plus.json',
-  ];
 
   static const _fallbackStyle = TextStyle(
     color: AppTheme.text,
@@ -31,7 +30,7 @@ class SyntaxHighlighter {
   /// Whether grammars and the dark theme have loaded successfully.
   static bool get isReady => _theme != null;
 
-  /// Loads the four grammars and the VS Code dark theme assets.
+  /// Loads the four grammars and the shared dark theme.
   ///
   /// Safe to call more than once; later calls share the same [Future].
   /// On Flutter Web this hits the asset bundle asynchronously and must
@@ -43,8 +42,8 @@ class SyntaxHighlighter {
   static Future<bool> _initialize() async {
     try {
       await Highlighter.initialize(_grammars);
-      _theme = await HighlighterTheme.loadFromAssets(
-        _themeAssetPaths,
+      _theme = HighlighterTheme.fromConfiguration(
+        _themeConfigJson,
         _fallbackStyle,
       );
       return true;
@@ -109,10 +108,7 @@ class SyntaxHighlighter {
     final lines = source.split('\n');
     final fallback = [
       for (final line in lines)
-        TextSpan(
-          text: line.isEmpty ? ' ' : line,
-          style: baseStyle,
-        ),
+        TextSpan(text: line.isEmpty ? ' ' : line, style: baseStyle),
     ];
 
     if (_highlighterFor(language) == null) return fallback;
@@ -219,3 +215,50 @@ class SyntaxHighlighter {
     return lines;
   }
 }
+
+/// Same restrained/desaturated token palette used by [SourceCodeViewer].
+final String _themeConfigJson = jsonEncode({
+  'settings': [
+    {
+      'scope': ['comment', 'comment.line', 'comment.block'],
+      'settings': {'foreground': '#5B6470', 'fontStyle': 'italic'},
+    },
+    {
+      'scope': [
+        'keyword',
+        'keyword.control',
+        'keyword.operator',
+        'storage.type',
+        'storage.modifier',
+      ],
+      'settings': {'foreground': '#7C93D1'},
+    },
+    {
+      'scope': [
+        'string',
+        'string.quoted',
+        'string.quoted.single',
+        'string.quoted.double',
+        'string.quoted.triple',
+      ],
+      'settings': {'foreground': '#9CB46A'},
+    },
+    {
+      'scope': [
+        'entity.name.type',
+        'support.type',
+        'support.class',
+        'support.type.property-name',
+      ],
+      'settings': {'foreground': '#6FB8AD'},
+    },
+    {
+      'scope': ['constant.numeric', 'constant.language', 'variable.language'],
+      'settings': {'foreground': '#C9A35A'},
+    },
+    {
+      'scope': ['entity.name.function', 'support.function'],
+      'settings': {'foreground': '#E0B880'},
+    },
+  ],
+});

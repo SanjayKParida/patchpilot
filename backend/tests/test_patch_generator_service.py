@@ -55,14 +55,30 @@ TASK_REFRESH_FIXTURE = (
 
 
 class FakeLLMService:
-    """Records the prompt and returns a fixed patch JSON string."""
+    """Records prompts and returns fixed patch JSON.
+
+    `response` may be a string or a list of strings. A list is
+    consumed in order so shrink-retry tests can return a bulky
+    first proposal and a smaller second one.
+    """
 
     def __init__(self, response=None):
         self.prompt = None
-        self.response = response
+        self.prompts = []
+        if isinstance(response, (list, tuple)):
+            self._responses = list(response)
+        else:
+            self._responses = None
+        self.response = (
+            self._responses[0] if self._responses else response
+        )
 
     def ask(self, prompt):
         self.prompt = prompt
+        self.prompts.append(prompt)
+        if self._responses is not None:
+            index = min(len(self.prompts) - 1, len(self._responses) - 1)
+            self.response = self._responses[index]
         return self.response
 
 
@@ -314,6 +330,8 @@ def test_prompt_includes_rules_issue_diagnosis_and_slices():
     )
 
     assert "========== RULES ==========" in prompt
+    assert "not a line quota" in prompt
+    assert "Do not add a nested helper" in prompt
     assert "Spinner stuck" in prompt
     assert "TaskBloc stuck loading" in prompt
     assert "========== CONTEXT SLICES ==========" in prompt
@@ -431,6 +449,221 @@ def test_generate_happy_path_accepts_matching_hunk():
     assert proposal.errors == []
     assert llm.prompt is not None
     assert "========== CONTEXT SLICES ==========" in llm.prompt
+    assert len(llm.prompts) == 1
+
+
+def test_generate_does_not_retry_a_small_in_place_replacement():
+    llm = FakeLLMService(
+        patch_json(
+            files=[
+                {
+                    "path": PATH,
+                    "hunks": [
+                        {
+                            "start_line": 11,
+                            "end_line": 11,
+                            "old_text": "line 11",
+                            "new_text": (
+                                "return values[key]?.toString() "
+                                "== expected;"
+                            ),
+                        }
+                    ],
+                }
+            ]
+        )
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert len(llm.prompts) == 1
+    assert "========== SHRINK ==========" not in llm.prompts[0]
+
+
+def bulky_new_text(n=12):
+    lines = ["bool match(dynamic a, dynamic b) {"]
+    lines.extend(f"  // case {i}" for i in range(n - 2))
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def bulky_patch_json(new_text=None):
+    return patch_json(
+        files=[
+            {
+                "path": PATH,
+                "hunks": [
+                    {
+                        "start_line": 11,
+                        "end_line": 11,
+                        "old_text": "line 11",
+                        "new_text": new_text or bulky_new_text(),
+                    }
+                ],
+            }
+        ]
+    )
+
+
+def test_generate_retries_when_a_small_span_balloons_into_a_helper():
+    llm = FakeLLMService([bulky_patch_json(), patch_json()])
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert proposal.files[0].hunks[0].new_text == "fixed 11"
+    assert len(llm.prompts) == 2
+    assert "========== SHRINK ==========" in llm.prompts[1]
+    assert "grew from 1 line(s) to 12 line(s)" in llm.prompts[1]
+    assert "Do not add a nested helper" in llm.prompts[1]
+
+
+def test_generate_keeps_first_proposal_when_shrink_does_not_apply():
+    llm = FakeLLMService(
+        [
+            bulky_patch_json(),
+            patch_json(
+                files=[
+                    {
+                        "path": PATH,
+                        "hunks": [
+                            {
+                                "start_line": 11,
+                                "end_line": 11,
+                                "old_text": "wrong",
+                                "new_text": "fixed 11",
+                            }
+                        ],
+                    }
+                ]
+            ),
+        ]
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert proposal.files[0].hunks[0].new_text == bulky_new_text()
+    assert len(llm.prompts) == 2
+    assert any("shrink retry" in warning for warning in proposal.warnings)
+    assert any("much larger" in warning for warning in proposal.warnings)
+
+
+def test_generate_keeps_first_proposal_when_shrink_is_not_smaller():
+    llm = FakeLLMService(
+        [
+            bulky_patch_json(bulky_new_text(12)),
+            bulky_patch_json(bulky_new_text(16)),
+        ]
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert proposal.files[0].hunks[0].new_text == bulky_new_text(12)
+    assert any("not smaller" in warning for warning in proposal.warnings)
+
+
+def test_generate_keeps_first_proposal_when_shrink_raises():
+    class RaisingOnSecondLLM:
+        def __init__(self):
+            self.prompts = []
+
+        def ask(self, prompt):
+            self.prompts.append(prompt)
+            if len(self.prompts) == 1:
+                return bulky_patch_json()
+            raise RuntimeError("llm down")
+
+    llm = RaisingOnSecondLLM()
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert proposal.files[0].hunks[0].new_text == bulky_new_text()
+    assert any("shrink retry failed" in warning for warning in proposal.warnings)
+    assert len(llm.prompts) == 2
+
+
+def test_generate_does_not_retry_a_large_old_span():
+    """A 10-line rewrite is a real fix, not a helper. No shrink."""
+
+    old_text = "\n".join(f"line {i}" for i in range(10, 20))
+    new_text = "\n".join(f"fixed {i}" for i in range(10, 30))
+    content = old_text
+
+    llm = FakeLLMService(
+        patch_json(
+            files=[
+                {
+                    "path": PATH,
+                    "hunks": [
+                        {
+                            "start_line": 10,
+                            "end_line": 19,
+                            "old_text": old_text,
+                            "new_text": new_text,
+                        }
+                    ],
+                }
+            ]
+        )
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(
+            slice(start=10, end=19, content=content),
+        ),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert len(llm.prompts) == 1
+    assert proposal.files[0].hunks[0].new_text == new_text
+
+
+def test_hunk_is_oversized_only_for_small_spans_that_grow():
+    small = PatchHunk(11, 11, "line 11", bulky_new_text())
+    in_place = PatchHunk(11, 11, "line 11", "fixed 11")
+    few_extra = PatchHunk(
+        11,
+        11,
+        "line 11",
+        "a\nb\nc\nd",
+    )
+    large_old = PatchHunk(
+        10,
+        19,
+        "\n".join(f"line {i}" for i in range(10)),
+        "\n".join(f"fixed {i}" for i in range(20)),
+    )
+
+    assert PatchGeneratorService._hunk_is_oversized(small)
+    assert not PatchGeneratorService._hunk_is_oversized(in_place)
+    assert not PatchGeneratorService._hunk_is_oversized(few_extra)
+    assert not PatchGeneratorService._hunk_is_oversized(large_old)
 
 
 def test_generate_rejects_mismatched_old_text():

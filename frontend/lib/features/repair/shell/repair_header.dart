@@ -12,7 +12,7 @@ class RepairHeader extends StatelessWidget implements PreferredSizeWidget {
     required this.statusColor,
     this.onToggleInspector,
     this.isInspectorVisible = true,
-    this.height = 56,
+    this.height = 40,
   });
 
   final String repositoryFullName;
@@ -22,7 +22,6 @@ class RepairHeader extends StatelessWidget implements PreferredSizeWidget {
   final Color statusColor;
   final VoidCallback? onToggleInspector;
   final bool isInspectorVisible;
-
   final double height;
 
   @override
@@ -36,79 +35,37 @@ class RepairHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: height,
-      color: AppTheme.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          _Brand(),
-          const SizedBox(width: 18),
-          const _Divider(),
-          const SizedBox(width: 18),
-
-          Expanded(
-            child: _RepositoryMetadata(
-              repositoryFullName: repositoryFullName,
-              branch: branch,
-              shortSha: _shortSha,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.shellPadding,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.terminal, size: 14, color: AppTheme.textMuted),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _RepositoryMetadata(
+                repositoryFullName: repositoryFullName,
+                branch: branch,
+                shortSha: _shortSha,
+              ),
             ),
-          ),
-
-          const SizedBox(width: 20),
-
-          _StatusIndicator(label: statusLabel, color: statusColor),
-
-          if (onToggleInspector != null) ...[
-            const SizedBox(width: 16),
-            const _Divider(),
-            const SizedBox(width: 12),
-            _InspectorToggle(
-              isVisible: isInspectorVisible,
-              onTap: onToggleInspector!,
-            ),
+            if (statusLabel.trim().isNotEmpty) ...[
+              const SizedBox(width: 12),
+              _StatusIndicator(label: statusLabel, color: statusColor),
+            ],
+            if (onToggleInspector != null) ...[
+              const SizedBox(width: 8),
+              _InspectorToggle(
+                isVisible: isInspectorVisible,
+                onTap: onToggleInspector!,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-    );
-  }
-}
-
-class _Brand extends StatelessWidget {
-  const _Brand();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppTheme.accent,
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: const Text(
-            'P',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 9),
-        const Text(
-          'PatchPilot',
-          style: TextStyle(
-            color: AppTheme.text,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -126,15 +83,16 @@ class _RepositoryMetadata extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(
+    const primary = TextStyle(
       fontFamily: AppTheme.mono,
-      fontSize: 12.5,
+      fontSize: 12,
       color: AppTheme.text,
+      fontWeight: FontWeight.w500,
     );
 
-    const mutedStyle = TextStyle(
+    const secondary = TextStyle(
       fontFamily: AppTheme.mono,
-      fontSize: 12.5,
+      fontSize: 11.5,
       color: AppTheme.textMuted,
     );
 
@@ -144,33 +102,24 @@ class _RepositoryMetadata extends StatelessWidget {
           child: Text(
             repositoryFullName,
             overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            style: style,
+            style: primary,
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('·', style: mutedStyle),
-        ),
+        const _Sep(),
         Flexible(
           child: Text(
             branch,
             overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            style: style,
+            style: secondary,
           ),
         ),
         if (shortSha.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text('·', style: mutedStyle),
-          ),
+          const _Sep(),
           Flexible(
             child: Text(
               shortSha,
               overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: style,
+              style: secondary,
             ),
           ),
         ],
@@ -191,20 +140,16 @@ class _StatusIndicator extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 7,
-          height: 7,
+          width: 6,
+          height: 6,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 7),
+        const SizedBox(width: 6),
         Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppTheme.text,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
-          ),
+          style: AppTypography.caption.copyWith(color: AppTheme.textSecondary),
         ),
       ],
     );
@@ -219,30 +164,31 @@ class _InspectorToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
+    return IconButton(
       onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: AppTheme.accent,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      tooltip: isVisible ? 'Hide inspector' : 'Show inspector',
+      icon: Icon(
+        isVisible ? Icons.view_sidebar : Icons.view_sidebar_outlined,
+        size: 16,
+        color: isVisible ? AppTheme.accent : AppTheme.textMuted,
       ),
-      child: Text(
-        isVisible ? 'Hide inspector' : 'Show inspector',
-        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
-      ),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
     );
   }
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider();
+class _Sep extends StatelessWidget {
+  const _Sep();
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 20,
-      child: VerticalDivider(width: 1, thickness: 1, color: AppTheme.border),
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Text(
+        '·',
+        style: TextStyle(color: AppTheme.borderSubtle, fontSize: 11),
+      ),
     );
   }
 }

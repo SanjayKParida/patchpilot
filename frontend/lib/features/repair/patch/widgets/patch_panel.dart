@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/code_viewer/widgets/syntax_highlighter.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
@@ -18,6 +19,18 @@ class PatchPanel extends StatefulWidget {
   final String? commitSha;
   final String? requestedRef;
   final void Function(String path, {int? line, String? reason}) onOpenFile;
+  final void Function(
+    PatchProposal? proposal,
+    PatchValidationResult? validation,
+    PatchApproval? approval,
+    PatchDelivery? delivery,
+  )?
+  onArtifactsChanged;
+  final ValueChanged<bool>? onBusyChanged;
+
+  /// When false (Repair workflow Patch stage), hide Validate/Approve/Deliver
+  /// so progression is Generate → review diff → Continue to Validation.
+  final bool showLifecycleActions;
 
   const PatchPanel({
     super.key,
@@ -26,6 +39,9 @@ class PatchPanel extends StatefulWidget {
     required this.onOpenFile,
     this.commitSha,
     this.requestedRef,
+    this.onArtifactsChanged,
+    this.onBusyChanged,
+    this.showLifecycleActions = true,
   });
 
   @override
@@ -108,6 +124,18 @@ class _PatchPanelState extends State<PatchPanel> {
       _delivery = delivery;
       _loadingCached = false;
     });
+    _scheduleNotify();
+  }
+
+  void _scheduleNotify() {
+    final onArtifacts = widget.onArtifactsChanged;
+    final onBusy = widget.onBusyChanged;
+    if (onArtifacts == null && onBusy == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      onArtifacts?.call(_proposal, _validation, _approval, _delivery);
+      onBusy?.call(_loadingPatch || _validating || _approving || _delivering);
+    });
   }
 
   bool _isMissingArtifact(ApiException error) {
@@ -124,6 +152,7 @@ class _PatchPanelState extends State<PatchPanel> {
       _delivery = null;
       _validation = null;
     });
+    _scheduleNotify();
 
     try {
       final proposal = await widget.api.generatePatch(widget.analysisId);
@@ -133,7 +162,10 @@ class _PatchPanelState extends State<PatchPanel> {
       if (!mounted) return;
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _loadingPatch = false);
+      if (mounted) {
+        setState(() => _loadingPatch = false);
+        _scheduleNotify();
+      }
     }
   }
 
@@ -147,6 +179,7 @@ class _PatchPanelState extends State<PatchPanel> {
       _delivery = null;
       _validation = null;
     });
+    _scheduleNotify();
 
     try {
       final result = await widget.api.validatePatch(widget.analysisId);
@@ -156,7 +189,10 @@ class _PatchPanelState extends State<PatchPanel> {
       if (!mounted) return;
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _validating = false);
+      if (mounted) {
+        setState(() => _validating = false);
+        _scheduleNotify();
+      }
     }
   }
 
@@ -168,6 +204,7 @@ class _PatchPanelState extends State<PatchPanel> {
       _approving = true;
       _error = null;
     });
+    _scheduleNotify();
 
     try {
       final approval = await widget.api.approvePatch(widget.analysisId);
@@ -177,7 +214,10 @@ class _PatchPanelState extends State<PatchPanel> {
       if (!mounted) return;
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _approving = false);
+      if (mounted) {
+        setState(() => _approving = false);
+        _scheduleNotify();
+      }
     }
   }
 
@@ -191,6 +231,7 @@ class _PatchPanelState extends State<PatchPanel> {
       _delivering = true;
       _error = null;
     });
+    _scheduleNotify();
 
     try {
       var result = await widget.api.deliverPatch(widget.analysisId);
@@ -228,7 +269,10 @@ class _PatchPanelState extends State<PatchPanel> {
         });
       }
     } finally {
-      if (mounted) setState(() => _delivering = false);
+      if (mounted) {
+        setState(() => _delivering = false);
+        _scheduleNotify();
+      }
     }
   }
 
@@ -255,119 +299,103 @@ class _PatchPanelState extends State<PatchPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionTitle(
-          'Proposed patch',
-          trailing: 'review before any commit',
-        ),
-        Panel(
-          background: const Color(0xFF12141C),
-          borderColor: AppTheme.purple.withValues(alpha: 0.45),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildIntro(),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                ErrorNotice(message: _error!),
-              ],
-              if (_loadingCached || _loadingPatch)
-                const Padding(
-                  padding: EdgeInsets.only(top: 20),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppTheme.purple,
-                      ),
-                    ),
-                  ),
-                )
-              else if (_proposal == null)
-                _buildEmpty()
-              else ...[
-                const SizedBox(height: 18),
-                _ProposalBody(
-                  proposal: _proposal!,
-                  onOpenFile: widget.onOpenFile,
+        _buildToolbar(),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          ErrorNotice(title: 'Patch request failed', message: _error!),
+        ],
+        const SizedBox(height: 12),
+        if (_loadingCached || _loadingPatch)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            decoration: BoxDecoration(
+              color: AppTheme.workspace,
+              borderRadius: AppRadii.panel,
+              border: Border.all(color: AppTheme.borderSubtle),
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.stagePatch,
                 ),
-                const SizedBox(height: 20),
-                const Divider(height: 1, color: AppTheme.border),
-                const SizedBox(height: 16),
-                _ValidationSection(
-                  proposal: _proposal!,
-                  validation: _validation,
-                  validating: _validating,
-                  approving: _approving,
-                  approved: _approval?.approved == true,
-                  onValidate: _validate,
-                  onApprove: _approve,
-                ),
-                if (_validation?.isPassed == true &&
-                    _approval?.approved == true) ...[
-                  const SizedBox(height: 20),
-                  const Divider(height: 1, color: AppTheme.border),
-                  const SizedBox(height: 16),
-                  _DeliverySection(
-                    delivery: _delivery,
-                    delivering: _delivering,
-                    analyzedCommit: _displayCommit,
-                    onDeliver: _deliver,
-                  ),
-                ],
-              ],
+              ),
+            ),
+          )
+        else if (_proposal == null)
+          _buildEmpty()
+        else ...[
+          _ProposalBody(proposal: _proposal!, onOpenFile: widget.onOpenFile),
+          if (widget.showLifecycleActions) ...[
+            const SizedBox(height: 20),
+            const Divider(height: 1, color: AppTheme.borderSubtle),
+            const SizedBox(height: 16),
+            _ValidationSection(
+              proposal: _proposal!,
+              validation: _validation,
+              validating: _validating,
+              approving: _approving,
+              approved: _approval?.approved == true,
+              onValidate: _validate,
+              onApprove: _approve,
+            ),
+            if (_validation?.isPassed == true &&
+                _approval?.approved == true) ...[
+              const SizedBox(height: 20),
+              const Divider(height: 1, color: AppTheme.borderSubtle),
+              const SizedBox(height: 16),
+              _DeliverySection(
+                delivery: _delivery,
+                delivering: _delivering,
+                analyzedCommit: _displayCommit,
+                onDeliver: _deliver,
+              ),
             ],
-          ),
-        ),
+          ],
+        ],
       ],
     );
   }
 
-  Widget _buildIntro() {
+  Widget _buildToolbar() {
     final commit = _displayCommit;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.difference_outlined, size: 20, color: AppTheme.purple),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'A generated proposal is a suggestion, not a verified fix. '
-                'Review the diff and run validation before approving.',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  height: 1.55,
-                  color: AppTheme.textMuted,
-                ),
-              ),
-              if (commit != null) ...[
-                const SizedBox(height: 8),
-                Tooltip(
-                  message: commit,
-                  child: Text(
-                    'Patching ${_shortSha(commit)}',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontFamily: AppTheme.mono,
-                      color: AppTheme.purple,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+        Icon(Icons.difference_outlined, size: 16, color: AppTheme.stagePatch),
+        const SizedBox(width: 8),
+        Text(
+          'Proposed patch',
+          style: AppTypography.title.copyWith(fontSize: 14),
         ),
+        if (commit != null) ...[
+          const SizedBox(width: 10),
+          const Text(
+            '·',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          ),
+          const SizedBox(width: 10),
+          Tooltip(
+            message: commit,
+            child: Text(
+              'Patching ${_shortSha(commit)}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontFamily: AppTheme.mono,
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
         if (_proposal == null && !_loadingCached && !_loadingPatch)
           FilledButton(
             onPressed: _generate,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.purple,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              backgroundColor: AppTheme.stagePatch,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
             child: const Text('Generate patch'),
           ),
@@ -389,11 +417,17 @@ class _PatchPanelState extends State<PatchPanel> {
   }
 
   Widget _buildEmpty() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 8),
-      child: Text(
-        'No patch has been generated for this analysis yet.',
-        style: TextStyle(fontSize: 13.5, color: AppTheme.textMuted),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppTheme.workspace,
+        borderRadius: AppRadii.panel,
+        border: Border.all(color: AppTheme.borderSubtle),
+      ),
+      child: const EmptyNotice(
+        icon: Icons.difference_outlined,
+        title: 'No patch yet',
+        message: 'Generate a patch to preview proposed file changes.',
       ),
     );
   }
@@ -410,55 +444,44 @@ class _ProposalBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        if (proposal.status != 'ok') ...[
+          ErrorNotice(
+            title: _failureTitle(proposal.status),
+            message: _statusExplanation(proposal.status) ?? '',
+          ),
+          const SizedBox(height: 14),
+        ],
+        Row(
           children: [
             StatusChip(
               label: _statusLabel(proposal.status),
               color: _statusColor(proposal.status),
             ),
-            if (proposal.confidencePercent.isNotEmpty)
+            if (proposal.confidencePercent.isNotEmpty) ...[
+              const SizedBox(width: 8),
               StatusChip(
                 label: proposal.confidencePercent,
                 color: AppTheme.textMuted,
                 icon: Icons.insights,
               ),
+            ],
+            if (proposal.summary.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  proposal.summary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
-        if (proposal.summary.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          SelectableText(
-            proposal.summary,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.45,
-            ),
-          ),
-        ],
-        if (proposal.reasoning.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          SelectableText(
-            proposal.reasoning,
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.6,
-              color: AppTheme.textMuted,
-            ),
-          ),
-        ],
-        if (_statusExplanation(proposal.status) != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _statusExplanation(proposal.status)!,
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.55,
-              color: _statusColor(proposal.status),
-            ),
-          ),
-        ],
         if (proposal.errors.isNotEmpty) ...[
           const SizedBox(height: 12),
           ...proposal.errors.map(
@@ -480,7 +503,7 @@ class _ProposalBody extends StatelessWidget {
           ),
         ],
         if (proposal.files.isNotEmpty) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           ...proposal.files.map(
             (file) => _FileDiff(
               file: file,
@@ -524,6 +547,21 @@ class _ProposalBody extends StatelessWidget {
     }
   }
 
+  static String _failureTitle(String status) {
+    switch (status) {
+      case 'insufficient_context':
+        return 'Patch not produced';
+      case 'ambiguous':
+        return 'Patch ambiguous';
+      case 'invalid':
+        return 'Patch application failed';
+      case 'empty':
+        return 'Empty patch';
+      default:
+        return 'Patch issue';
+    }
+  }
+
   static String? _statusExplanation(String status) {
     switch (status) {
       case 'ok':
@@ -554,45 +592,42 @@ class _FileDiff extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.background,
-          border: Border.all(color: AppTheme.border),
-          borderRadius: BorderRadius.circular(8),
+          color: AppTheme.workspace,
+          borderRadius: AppRadii.panel,
+          border: Border.all(color: AppTheme.borderSubtle),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Material(
-              color: AppTheme.surfaceAlt,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
-              ),
+              color: AppTheme.chrome,
               child: InkWell(
                 onTap: () => onOpen(
                   line: file.hunks.isEmpty ? null : file.hunks.first.startLine,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.insert_drive_file_outlined,
-                        size: 15,
-                        color: AppTheme.purple,
+                        size: 14,
+                        color: AppTheme.stagePatch,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           file.path,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontFamily: AppTheme.mono,
-                            color: AppTheme.text,
+                          style: AppTypography.code(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -600,7 +635,7 @@ class _FileDiff extends StatelessWidget {
                         '${file.hunks.length} '
                         '${file.hunks.length == 1 ? 'hunk' : 'hunks'}',
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           color: AppTheme.textMuted,
                         ),
                       ),
@@ -609,7 +644,10 @@ class _FileDiff extends StatelessWidget {
                 ),
               ),
             ),
-            ...file.hunks.map((hunk) => _HunkDiff(hunk: hunk, onOpen: onOpen)),
+            ...file.hunks.map(
+              (hunk) =>
+                  _HunkDiff(hunk: hunk, filePath: file.path, onOpen: onOpen),
+            ),
           ],
         ),
       ),
@@ -619,9 +657,17 @@ class _FileDiff extends StatelessWidget {
 
 class _HunkDiff extends StatelessWidget {
   final PatchHunk hunk;
+  final String filePath;
   final void Function({int? line}) onOpen;
 
-  const _HunkDiff({required this.hunk, required this.onOpen});
+  const _HunkDiff({
+    required this.hunk,
+    required this.filePath,
+    required this.onOpen,
+  });
+
+  static const double _gutterW = 36;
+  static const double _markerW = 18;
 
   @override
   Widget build(BuildContext context) {
@@ -630,90 +676,159 @@ class _HunkDiff extends StatelessWidget {
       hunk.newText,
       startLine: hunk.startLine,
     );
+    final language = SyntaxHighlighter.languageFromPath(filePath);
+    final gutterStyle = AppTypography.code(
+      fontSize: 11,
+      color: AppTheme.textMuted,
+    );
+    final codeStyle = AppTypography.code();
 
-    return InkWell(
-      onTap: () => onOpen(line: hunk.startLine),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-            child: Text(
-              'Lines ${hunk.startLine}–${hunk.endLine}',
-              style: const TextStyle(
-                fontSize: 11,
-                fontFamily: AppTheme.mono,
-                color: AppTheme.textMuted,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: AppTheme.surfaceElevated,
+          child: InkWell(
+            onTap: () => onOpen(line: hunk.startLine),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+              child: Text(
+                '@@ ${hunk.startLine},${hunk.endLine} @@',
+                style: AppTypography.code(
+                  fontSize: 11,
+                  color: AppTheme.textMuted,
+                ),
               ),
             ),
           ),
-          ...lines.map(_line),
-        ],
-      ),
+        ),
+        DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: IntrinsicWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final line in lines)
+                          _line(
+                            line,
+                            language: language,
+                            gutterStyle: gutterStyle,
+                            codeStyle: codeStyle,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _line(DiffLine line) {
+  Widget _line(
+    DiffLine line, {
+    required String? language,
+    required TextStyle gutterStyle,
+    required TextStyle codeStyle,
+  }) {
     late final Color background;
+    late final Color accentBar;
     late final Color markerColor;
     late final String marker;
 
     switch (line.kind) {
       case DiffKind.added:
-        background = AppTheme.success.withValues(alpha: 0.12);
+        background = const Color(0xFF12261A);
+        accentBar = AppTheme.success;
         markerColor = AppTheme.success;
         marker = '+';
       case DiffKind.removed:
-        background = AppTheme.danger.withValues(alpha: 0.12);
+        background = const Color(0xFF2A1518);
+        accentBar = AppTheme.danger;
         markerColor = AppTheme.danger;
         marker = '-';
       case DiffKind.unchanged:
         background = Colors.transparent;
+        accentBar = Colors.transparent;
         markerColor = AppTheme.textMuted;
         marker = ' ';
     }
 
-    return Container(
+    final codeSpan = SyntaxHighlighter.highlight(
+      source: line.text.isEmpty ? ' ' : line.text,
+      language: language,
+      baseStyle: codeStyle,
+    );
+
+    return Material(
       color: background,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 44,
-            child: Text(
-              '${line.oldLine ?? line.newLine ?? ''}',
-              style: const TextStyle(
-                fontSize: 11,
-                fontFamily: AppTheme.mono,
-                color: AppTheme.textMuted,
+      child: InkWell(
+        onTap: () => onOpen(line: line.newLine ?? line.oldLine),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 3, color: accentBar),
+              SizedBox(
+                width: _gutterW,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      line.oldLine?.toString() ?? '',
+                      style: gutterStyle,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-          Text(
-            marker,
-            style: TextStyle(
-              fontSize: 12,
-              fontFamily: AppTheme.mono,
-              color: markerColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              line.text,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontFamily: AppTheme.mono,
-                height: 1.45,
-                color: markerColor == AppTheme.textMuted
-                    ? AppTheme.text
-                    : markerColor,
+              SizedBox(
+                width: _gutterW,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      line.newLine?.toString() ?? '',
+                      style: gutterStyle,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              SizedBox(
+                width: _markerW,
+                child: Center(
+                  child: Text(
+                    marker,
+                    style: AppTypography.code(
+                      fontSize: 12,
+                      color: markerColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 1, 12, 1),
+                child: Text.rich(
+                  codeSpan,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -757,7 +872,7 @@ class _ValidationSection extends StatelessWidget {
                 ),
               )
             else if (proposal.canValidate)
-              OutlinedButton(
+              FilledButton(
                 onPressed: onValidate,
                 child: const Text('Validate patch'),
               ),

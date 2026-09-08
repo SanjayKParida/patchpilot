@@ -1,8 +1,12 @@
+// open_file_button.dart
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 
-/// A file path rendered as an affordance rather than as text.
+/// A file path rendered as an affordance rather than as text — a
+/// neutral-bordered code reference, with accent color reserved for
+/// the icon and label so it doesn't compete visually with other
+/// accent-colored elements on the screen.
 class OpenFileButton extends StatelessWidget {
   final String path;
   final VoidCallback onTap;
@@ -15,13 +19,12 @@ class OpenFileButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: AppTheme.background,
-            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppTheme.border),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -1,3 +1,4 @@
+// relevant_files_section.dart
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -30,42 +31,32 @@ class RelevantFilesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              Text(
-                'RELEVANT FILES',
-                style: TextStyle(
-                  color: AppTheme.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'ranked by evidence',
-                style: TextStyle(
-                  color: AppTheme.textMuted,
-                  fontSize: 11.5,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
+        Row(
+          children: [
+            Text('RELEVANT FILES', style: AppTypography.sectionLabel),
+            const Spacer(),
+            Text('${files.length}', style: AppTypography.caption),
+          ],
         ),
-        ...visibleFiles.map(
-          (file) => _RelevantFileRow(
-            file: file,
-            isCited: citedFilePaths.contains(file.path),
-            totalSignalCount: totalSignalCount,
-            onTap: () => onOpen(file),
-          ),
-        ),
+        const SizedBox(height: 8),
+        ...visibleFiles.asMap().entries.expand((entry) {
+          final index = entry.key;
+          final file = entry.value;
+          return [
+            if (index > 0)
+              Divider(
+                height: 1,
+                color: AppTheme.border.withValues(alpha: 0.45),
+              ),
+            _RelevantFileRow(
+              index: index,
+              file: file,
+              isCited: citedFilePaths.contains(file.path),
+              totalSignalCount: totalSignalCount,
+              onTap: () => onOpen(file),
+            ),
+          ];
+        }),
         if (hiddenCount > 0)
           _ExpandToggle(
             label: 'Show $hiddenCount more',
@@ -83,12 +74,14 @@ class RelevantFilesSection extends StatelessWidget {
 
 class _RelevantFileRow extends StatelessWidget {
   const _RelevantFileRow({
+    required this.index,
     required this.file,
     required this.isCited,
     required this.totalSignalCount,
     required this.onTap,
   });
 
+  final int index;
   final RelevantFile file;
   final bool isCited;
   final int totalSignalCount;
@@ -96,9 +89,13 @@ class _RelevantFileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rankLabel = (index + 1).toString().padLeft(2, '0');
+    final subtitle = file.directory.isEmpty ? file.path : file.directory;
+
     return InkWell(
       onTap: onTap,
-      child: Container(
+      borderRadius: BorderRadius.circular(3),
+      child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(
             left: BorderSide(
@@ -107,110 +104,107 @@ class _RelevantFileRow extends StatelessWidget {
             ),
           ),
         ),
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.insert_drive_file_outlined,
-              size: 15,
-              color: AppTheme.textMuted,
-            ),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          file.fileName,
-                          style: TextStyle(
-                            color: AppTheme.text,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (isCited) ...[
-                        SizedBox(width: AppSpacing.xs),
-                        _CitedBadge(),
-                      ],
-                    ],
-                  ),
-                  SizedBox(height: 1),
-                  Text(
-                    file.directory.isEmpty ? file.path : file.directory,
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontFamily: AppTheme.mono,
-                      fontSize: 11.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '#${file.rank}',
-                  style: TextStyle(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 0, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 28,
+                child: Text(
+                  rankLabel,
+                  style: const TextStyle(
                     color: AppTheme.textMuted,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    fontFamily: AppTheme.mono,
                   ),
                 ),
-                if (totalSignalCount > 0) ...[
-                  SizedBox(height: 1),
-                  Text(
-                    '${file.signalsMatched}/$totalSignalCount signals',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 11,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            file.fileName,
+                            style: const TextStyle(
+                              color: AppTheme.text,
+                              fontSize: 12.5,
+                              fontFamily: AppTheme.mono,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isCited) ...[
+                          const SizedBox(width: 8),
+                          const _CitedTag(),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ],
-            ),
-            SizedBox(width: AppSpacing.xs),
-            Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: AppTheme.textMuted,
-            ),
-          ],
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontFamily: AppTheme.mono,
+                        fontSize: 11.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (totalSignalCount > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '${file.signalsMatched}/$totalSignalCount signals',
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '#${file.rank}',
+                style: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 11,
+                  fontFamily: AppTheme.mono,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: AppTheme.textMuted,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _CitedBadge extends StatelessWidget {
-  const _CitedBadge();
+/// A quiet inline marker rather than a filled badge — the file's name
+/// already carries the weight; this just adds context.
+class _CitedTag extends StatelessWidget {
+  const _CitedTag();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: AppTheme.accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-      ),
-      child: Text(
-        'Cited',
-        style: TextStyle(
-          color: AppTheme.accent,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
+    return const Text(
+      'CITED',
+      style: TextStyle(
+        color: AppTheme.accent,
+        fontSize: 9.5,
+        fontFamily: AppTheme.mono,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.4,
       ),
     );
   }
@@ -227,13 +221,10 @@ class _ExpandToggle extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppTheme.accent,
             fontSize: 12,
             fontWeight: FontWeight.w500,

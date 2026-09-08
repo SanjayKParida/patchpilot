@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 
-/// Palette for the current PatchPilot UI.
+/// Palette for the PatchPilot developer-tool UI.
 ///
-/// Kept as named constants so screens and widgets do not invent
-/// one-off colours. Appearance is unchanged from the previous
-/// [AppTheme] statics.
+/// Layered surfaces replace heavy borders: chrome (shell), workspace (stage
+/// content), and elevated panels read as depth rather than boxes.
 class AppColors {
-  static const Color background = Color(0xFF0D1117);
-  static const Color surface = Color(0xFF161B22);
-  static const Color surfaceAlt = Color(0xFF1C2128);
-  static const Color border = Color(0xFF30363D);
-  static const Color accent = Color(0xFF4C8DFF);
-  static const Color text = Color(0xFFE6EDF3);
-  static const Color textMuted = Color(0xFF8B949E);
+  static const Color background = Color(0xFF101216);
+  static const Color chrome = Color(0xFF161A20);
+  static const Color workspace = Color(0xFF12151A);
+  static const Color surface = Color(0xFF1A1E26);
+  static const Color surfaceElevated = Color(0xFF21262F);
+  static const Color surfaceAlt = Color(0xFF2A3039);
+  static const Color border = Color(0xFF343B46);
+  static const Color borderSubtle = Color(0xFF232830);
+  static const Color accent = Color(0xFF5B8DEF);
+  static const Color text = Color(0xFFECEFF4);
+  static const Color textSecondary = Color(0xFFB8BFCA);
+  static const Color textMuted = Color(0xFF6E7681);
   static const Color success = Color(0xFF3FB950);
   static const Color danger = Color(0xFFF85149);
   static const Color warning = Color(0xFFD29922);
   static const Color purple = Color(0xFFA371F7);
+  static const Color teal = Color(0xFF56D4DD);
 }

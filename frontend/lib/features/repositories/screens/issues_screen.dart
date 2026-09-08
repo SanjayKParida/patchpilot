@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/models/models.dart';
+import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
 import '../widgets/issue_row.dart';
@@ -14,6 +15,7 @@ import '../widgets/snapshot_status.dart';
 /// Issue list for a repository: the user chooses what to investigate.
 class IssuesScreen extends StatefulWidget {
   final ApiClient api;
+  final AnalysisCache cache;
   final Repository repository;
   final void Function(Issue issue, {String? ref}) onIssueSelected;
   final VoidCallback onBack;
@@ -21,6 +23,7 @@ class IssuesScreen extends StatefulWidget {
   const IssuesScreen({
     super.key,
     required this.api,
+    required this.cache,
     required this.repository,
     required this.onIssueSelected,
     required this.onBack,
@@ -135,8 +138,6 @@ class _IssuesScreenState extends State<IssuesScreen> {
     }
   }
 
-  /// Filtering is local: the list is small and the user gets instant
-  /// feedback without a request per keystroke.
   List<Issue> get _visible {
     final term = _query.trim().toLowerCase();
     if (term.isEmpty) return _issues;
@@ -148,10 +149,24 @@ class _IssuesScreenState extends State<IssuesScreen> {
     }).toList();
   }
 
+  bool _hasCompletedAnalysis(Issue issue) {
+    final pinned = _refController.text.trim();
+    final key = AnalysisCache.keyFor(
+      widget.repository.owner,
+      widget.repository.repo,
+      issue.number,
+      ref: pinned.isEmpty ? null : pinned,
+    );
+    final analysis = widget.cache.read(key);
+    return analysis?.status == AnalysisStatus.completed;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       body: PageBody(
+        padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -167,61 +182,154 @@ class _IssuesScreenState extends State<IssuesScreen> {
               error: _snapshotError,
               percent: _snapshotPercent,
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-              decoration: const InputDecoration(
-                hintText: 'Filter by number, title or description',
-                prefixIcon: Icon(Icons.search, color: AppTheme.textMuted),
-              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Text(
+                  'Issues',
+                  style: AppTypography.title.copyWith(fontSize: 16),
+                ),
+                if (!_loading) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    '${_visible.length} of ${_issues.length}',
+                    style: AppTypography.caption,
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _refController,
-              style: const TextStyle(fontFamily: AppTheme.mono, fontSize: 13.5),
-              decoration: const InputDecoration(
-                hintText:
-                    'Commit SHA or ref (optional). Leave blank for current HEAD.',
-                prefixIcon: Icon(Icons.commit, color: AppTheme.textMuted),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceElevated,
+                borderRadius: AppRadii.panel,
+                border: Border.all(color: AppTheme.borderSubtle),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildFilterBar(),
+                  Container(height: 1, color: AppTheme.borderSubtle),
+                  _buildListBody(),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 64),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null)
-              ErrorNotice(message: _error!, onRetry: _load)
-            else if (_visible.isEmpty)
-              EmptyNotice(
-                icon: _issues.isEmpty ? Icons.inbox_outlined : Icons.search_off,
-                message: _issues.isEmpty
-                    ? 'This repository has no open issues.'
-                    : 'No issues match "$_query".',
-              )
-            else ...[
-              SectionTitle(
-                'Issues',
-                trailing: '${_visible.length} of ${_issues.length}',
-              ),
-              ..._visible.map(
-                (issue) => IssueRow(
-                  issue: issue,
-                  analyzeEnabled: _snapshotStatus != 'preparing',
-                  onAnalyze: () => widget.onIssueSelected(
-                    issue,
-                    ref: _refController.text.trim().isEmpty
-                        ? null
-                        : _refController.text.trim(),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _query = value),
+              style: const TextStyle(fontSize: 13),
+              decoration: const InputDecoration(
+                isDense: true,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                hintText: 'Filter by number, title or description',
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 16,
+                  color: AppTheme.textMuted,
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 36),
+              ),
+            ),
+          ),
+          Container(width: 1, height: 28, color: AppTheme.borderSubtle),
+          Expanded(
+            flex: 2,
+            child: TextField(
+              controller: _refController,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontFamily: AppTheme.mono, fontSize: 12),
+              decoration: const InputDecoration(
+                isDense: true,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                hintText:
+                    'Commit SHA or ref (optional). Leave blank for current HEAD.',
+                prefixIcon: Icon(
+                  Icons.commit,
+                  size: 15,
+                  color: AppTheme.textMuted,
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 32),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListBody() {
+    if (_loading) {
+      return Column(
+        children: List.generate(5, (i) {
+          return Column(
+            children: [
+              if (i > 0) Container(height: 1, color: AppTheme.borderSubtle),
+              const IssueRowSkeleton(),
+            ],
+          );
+        }),
+      );
+    }
+
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: ErrorNotice(message: _error!, onRetry: _load),
+      );
+    }
+
+    if (_visible.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: EmptyNotice(
+          icon: _issues.isEmpty ? Icons.inbox_outlined : Icons.search_off,
+          message: _issues.isEmpty
+              ? 'This repository has no open issues.'
+              : 'No issues match "$_query".',
+        ),
+      );
+    }
+
+    final visible = _visible;
+    return Column(
+      children: [
+        for (var i = 0; i < visible.length; i++) ...[
+          if (i > 0) Container(height: 1, color: AppTheme.borderSubtle),
+          IssueRow(
+            issue: visible[i],
+            analyzeEnabled: _snapshotStatus != 'preparing',
+            analyzed: _hasCompletedAnalysis(visible[i]),
+            onAnalyze: () => widget.onIssueSelected(
+              visible[i],
+              ref: _refController.text.trim().isEmpty
+                  ? null
+                  : _refController.text.trim(),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

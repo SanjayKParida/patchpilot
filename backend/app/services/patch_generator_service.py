@@ -126,6 +126,11 @@ class PatchGeneratorService:
             response,
             context_package,
         )
+        proposal = self._maybe_shrink(
+            proposal,
+            prompt,
+            context_package,
+        )
         logger.info(
             "patch_proposal_parse_validation_end elapsed_ms=%s status=%s",
             int((time.monotonic() - started) * 1000),
@@ -372,6 +377,141 @@ class PatchGeneratorService:
 
         return hunks_by_path
 
+    # =========================================================
+    # SCOPE / SHRINK
+    # =========================================================
+
+    def _maybe_shrink(self, proposal, prompt, context_package):
+        """
+        One retry when a small defect span ballooned into a helper.
+
+        Size is a signal to shrink, not a quota. A retry that is not
+        smaller, does not apply, or fails is discarded. The first
+        proposal is kept.
+        """
+
+        if proposal.status != STATUS_OK:
+            return proposal
+
+        if not self._proposal_is_oversized(proposal):
+            return proposal
+
+        shrink_prompt = prompt + "\n\n" + self._shrink_section(proposal)
+
+        try:
+            response = self.llm.ask(shrink_prompt)
+        except Exception:
+            proposal.warnings.append(
+                "shrink retry failed; kept the first proposal"
+            )
+            self._warn_if_oversized(proposal)
+            return proposal
+
+        retry = self._build_proposal(response, context_package)
+
+        if retry.status != STATUS_OK or not retry.files:
+            proposal.warnings.append(
+                "shrink retry did not produce an applicable patch; "
+                "kept the first proposal"
+            )
+            self._warn_if_oversized(proposal)
+            return proposal
+
+        if self._proposal_new_lines(retry) >= self._proposal_new_lines(
+            proposal
+        ):
+            proposal.warnings.append(
+                "shrink retry was not smaller; kept the first proposal"
+            )
+            self._warn_if_oversized(proposal)
+            return proposal
+
+        self._warn_if_oversized(retry)
+        return retry
+
+    def _shrink_section(self, proposal):
+        details = []
+
+        for file in proposal.files:
+            for hunk in file.hunks:
+                if not self._hunk_is_oversized(hunk):
+                    continue
+                old_n = self._line_count(hunk.old_text)
+                new_n = self._line_count(hunk.new_text)
+                details.append(
+                    f"- {file.path}:{hunk.start_line}-{hunk.end_line} "
+                    f"grew from {old_n} line(s) to {new_n} line(s)"
+                )
+
+        body = "\n".join(details) if details else "- (see first proposal)"
+
+        return _section(
+            "SHRINK",
+            (
+                "The previous proposal replaced a small defect span "
+                "with a much larger one:\n"
+                f"{body}\n\n"
+                "Rewrite those hunks in place. Do not add a nested "
+                "helper, type switch, or new function unless that "
+                "symbol already exists in the slices. Do not drop a "
+                "diagnosed site to stay short. Extra files or extra "
+                "lines are required when the diagnosis names them.\n"
+                "Return JSON only."
+            ),
+        )
+
+    @staticmethod
+    def _warn_if_oversized(proposal):
+        if not PatchGeneratorService._proposal_is_oversized(proposal):
+            return
+        warning = (
+            "proposal replaces a small span with a much larger one; "
+            "extra cases may be included"
+        )
+        if warning not in proposal.warnings:
+            proposal.warnings.append(warning)
+
+    @staticmethod
+    def _proposal_is_oversized(proposal):
+        for file in proposal.files:
+            for hunk in file.hunks:
+                if PatchGeneratorService._hunk_is_oversized(hunk):
+                    return True
+        return False
+
+    @staticmethod
+    def _proposal_new_lines(proposal):
+        total = 0
+        for file in proposal.files:
+            for hunk in file.hunks:
+                total += PatchGeneratorService._line_count(hunk.new_text)
+        return total
+
+    @staticmethod
+    def _hunk_is_oversized(hunk):
+        """
+        A small old span that grew by many lines looks like a new
+        helper, not an in-place fix. Larger old spans are never
+        flagged: some defects need a real rewrite.
+        """
+
+        old_n = PatchGeneratorService._line_count(hunk.old_text)
+        new_n = PatchGeneratorService._line_count(hunk.new_text)
+
+        if new_n <= old_n:
+            return False
+
+        if old_n <= 3 and (new_n - old_n) > 8:
+            return True
+
+        return False
+
+    @staticmethod
+    def _line_count(text):
+        if not text:
+            return 0
+        return len(text.splitlines())
+
     @staticmethod
     def _parse_hunk(path, hunk):
         if not isinstance(hunk, dict):
@@ -488,7 +628,13 @@ class PatchGeneratorService:
         return _section(
             "RULES",
             """
-You are a senior software engineer proposing a minimal code patch.
+You are a senior software engineer proposing a code patch.
+
+The patch must be the smallest change that implements the
+diagnosed fix for the reported issue. Smallest means scope,
+not a line quota: extra files or extra lines are required when
+the diagnosis names them. Extra types, helpers, and defensive
+switches are not.
 
 You may use ONLY the issue, diagnosis, and numbered context slices
 below. Do not search the repository. Do not invent files, symbols,
@@ -497,6 +643,13 @@ imports, or code that does not appear in the supplied slices.
 Requirements:
 - Modify only paths that appear in the context slices.
 - Prefer edits at the defect site (tier 0) and root-cause locations.
+- Edit every comparison, assignment, or branch the diagnosis
+  names as part of the defect. Do not skip a site to stay short.
+- Change the defect in place. Do not add a nested helper, type
+  switch, or new function unless that symbol already exists in
+  the slices.
+- Do not handle types, values, or files the issue and
+  suggested_fix do not name.
 - Preserve unrelated code outside the edited span.
 - Use absolute 1-based file line numbers from the slice headers.
 - Copy old_text EXACTLY from slice content, including whitespace.

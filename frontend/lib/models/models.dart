@@ -400,18 +400,16 @@ class Analysis {
     switch (stage) {
       case 'fetching_issue':
         return 'Reading the issue';
-      case 'extracting_signals':
-        return 'Extracting signals';
       case 'fetching_source':
         return 'Downloading repository source';
-      case 'analyzing_structure':
-        return 'Mapping code structure';
-      case 'collecting_evidence':
-        return 'Collecting evidence';
+      case 'extracting_signals':
+        return 'Extracting signals';
       case 'ranking':
         return 'Ranking candidate files';
       case 'diagnosing':
         return 'Diagnosing root cause';
+      case 'building_context':
+        return 'Building repository context';
       default:
         return 'Starting analysis';
     }

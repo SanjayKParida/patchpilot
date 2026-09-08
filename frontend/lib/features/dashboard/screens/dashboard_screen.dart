@@ -7,7 +7,7 @@ import 'package:patchpilot_web/services/api_client.dart';
 
 import '../widgets/dashboard_cards.dart';
 
-/// Landing: demo first, then the user's authorized GitHub repositories.
+/// Landing: developer workspace / repository launcher.
 class DashboardScreen extends StatefulWidget {
   final ApiClient api;
   final ValueNotifier<AuthUser?> session;
@@ -54,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     widget.session.addListener(_onSession);
     _error = widget.initialAuthError;
     _loadDemo();
+
     if (_user != null) {
       _loadRepos(refresh: widget.refreshGrantsOnStart);
     }
@@ -76,34 +77,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadDemo() async {
-    setState(() {
-      _loadingDemo = true;
-    });
+    setState(() => _loadingDemo = true);
+
     try {
       final demo = await widget.api.getDemoRepository();
+
       if (!mounted) return;
+
       setState(() => _demo = demo);
     } on ApiException catch (e) {
       if (!mounted) return;
+
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _loadingDemo = false);
+      if (mounted) {
+        setState(() => _loadingDemo = false);
+      }
     }
   }
 
   Future<void> _loadRepos({bool refresh = false}) async {
     setState(() => _loadingRepos = true);
+
     try {
       final repos = refresh
           ? await widget.api.refreshAuthorizedRepositories()
           : await widget.api.listAuthorizedRepositories();
+
       if (!mounted) return;
+
       setState(() => _repos = repos);
     } on ApiException catch (e) {
       if (!mounted) return;
+
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _loadingRepos = false);
+      if (mounted) {
+        setState(() => _loadingRepos = false);
+      }
     }
   }
 
@@ -112,13 +123,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _connecting = true;
       _error = null;
     });
+
     try {
       await widget.onConnectGithub();
     } on ApiException catch (e) {
       if (!mounted) return;
+
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _connecting = false);
+      if (mounted) {
+        setState(() => _connecting = false);
+      }
     }
   }
 
@@ -127,101 +142,345 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _managing = true;
       _error = null;
     });
+
     try {
       await widget.onManageGithub();
     } on ApiException catch (e) {
       if (!mounted) return;
+
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _managing = false);
+      if (mounted) {
+        setState(() => _managing = false);
+      }
     }
   }
 
   List<Repository> get _visibleRepos {
     final term = _query.trim().toLowerCase();
+
     if (term.isEmpty) return _repos;
+
     return _repos.where((repo) {
       return repo.fullName.toLowerCase().contains(term) ||
           (repo.description ?? '').toLowerCase().contains(term);
     }).toList();
   }
 
+  bool get _showManageBelowList =>
+      _user != null && (_loadingRepos || _repos.isNotEmpty);
+
   @override
   Widget build(BuildContext context) {
     final user = _user;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       body: PageBody(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTopBar(user),
-            const SizedBox(height: 36),
-            const Text(
-              'Open the demo immediately, or connect GitHub to work on '
-              'repositories you have authorized.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textMuted,
-                height: 1.6,
-              ),
+        padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildTopBar(user),
+                const SizedBox(height: 32),
+                _buildHeading(),
+                const SizedBox(height: 24),
+                if (_error != null) ...[
+                  ErrorNotice(message: _error!),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.textMuted,
+                        padding: EdgeInsets.zero,
+                      ),
+                      onPressed: user == null ? _connect : _manage,
+                      child: Text(
+                        user == null ? 'Try again' : 'Reconnect GitHub',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                _buildRepositoryWorkspace(user),
+                const SizedBox(height: 42),
+                _buildDemoSection(),
+              ],
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 20),
-              ErrorNotice(message: _error!),
-              const SizedBox(height: 12),
-              Center(
-                child: TextButton(
-                  onPressed: user == null ? _connect : _manage,
-                  child: Text(user == null ? 'Try again' : 'Reconnect GitHub'),
-                ),
-              ),
-            ],
-            const SizedBox(height: 36),
-            const SectionTitle('Demo'),
-            const SizedBox(height: 12),
-            if (_loadingDemo)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_demo != null)
-              DemoCard(
-                repository: _demo!,
-                onOpen: () => widget.onRepositorySelected(_demo!),
-              ),
-            const SizedBox(height: 36),
-            SectionTitle(user == null ? 'Your GitHub' : 'Your repositories'),
-            const SizedBox(height: 12),
-            if (user == null)
-              ConnectCard(connecting: _connecting, onConnect: _connect)
-            else
-              AuthorizedList(
-                loading: _loadingRepos,
-                managing: _managing,
-                controller: _searchController,
-                repositories: _visibleRepos,
-                onQuery: (value) => setState(() => _query = value),
-                onOpen: widget.onRepositorySelected,
-                onManage: _manage,
-              ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRepositoryWorkspace(AuthUser? user) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'YOUR REPOSITORIES',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Choose a repository',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (user != null && !_loadingRepos && _repos.isNotEmpty)
+                  Text(
+                    '${_repos.length} connected',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontFamily: AppTheme.mono,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: AppTheme.borderSubtle),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: user == null
+                ? ConnectPrompt(connecting: _connecting, onConnect: _connect)
+                : AuthorizedWorkspace(
+                    loading: _loadingRepos,
+                    managing: _managing,
+                    controller: _searchController,
+                    hasAnyRepositories: _repos.isNotEmpty,
+                    repositories: _visibleRepos,
+                    totalCount: _repos.length,
+                    query: _query,
+                    onQuery: (value) => setState(() => _query = value),
+                    onOpen: widget.onRepositorySelected,
+                    onManage: _manage,
+                  ),
+          ),
+          if (_showManageBelowList)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.textMuted,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  onPressed: _managing ? null : _manage,
+                  child: const Text(
+                    'Manage GitHub access',
+                    style: TextStyle(fontSize: 11.5),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeading() {
+    final user = _user;
+
+    late final String eyebrow;
+    late final String headline;
+    late final String subtext;
+
+    if (user == null) {
+      eyebrow = 'GET STARTED';
+      headline = 'Bring your code into PatchPilot';
+      subtext =
+          'Connect GitHub to diagnose issues, generate fixes, and open pull requests.';
+    } else if (_repos.isEmpty && _loadingRepos) {
+      eyebrow = 'WORKSPACE';
+      headline = 'Loading your repositories';
+      subtext = 'Fetching the repositories available to PatchPilot…';
+    } else if (_repos.isEmpty) {
+      eyebrow = 'WORKSPACE';
+      headline = 'No repositories connected';
+      subtext = 'Choose which repositories PatchPilot can access from GitHub.';
+    } else {
+      eyebrow = 'WORKSPACE';
+      headline = 'Start with a repository';
+      subtext = _repos.length == 1
+          ? '1 repository is ready for issue triage.'
+          : '${_repos.length} repositories are ready for issue triage.';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          eyebrow,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+            color: AppTheme.accent,
+          ),
+        ),
+        const SizedBox(height: 9),
+        Text(
+          headline,
+          style: AppTypography.title.copyWith(
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.7,
+            height: 1.08,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650),
+          child: Text(
+            subtext,
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: AppTheme.textMuted,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDemoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NO GITHUB REQUIRED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    'Try the workflow',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const Text(
+              'DEMO',
+              style: TextStyle(
+                fontSize: 10,
+                fontFamily: AppTheme.mono,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceAlt,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: AppTheme.borderSubtle),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _loadingDemo
+              ? const DemoRowSkeleton()
+              : _demo != null
+              ? DemoRow(
+                  repository: _demo!,
+                  onOpen: () => widget.onRepositorySelected(_demo!),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 
   Widget _buildTopBar(AuthUser? user) {
     return Row(
       children: [
-        const Branding(size: 36),
+        const Branding(size: 24),
+        const SizedBox(width: 10),
+        const Text(
+          'PatchPilot',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          width: 4,
+          height: 4,
+          decoration: const BoxDecoration(
+            color: AppTheme.textMuted,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'Workspace',
+          style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted),
+        ),
         const Spacer(),
         if (user != null) ...[
           UserChip(user: user),
-          const SizedBox(width: 12),
-          TextButton(onPressed: widget.onLogout, child: const Text('Log out')),
+          Container(
+            width: 1,
+            height: 16,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            color: AppTheme.borderSubtle,
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.textMuted,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 32),
+            ),
+            onPressed: widget.onLogout,
+            child: const Text('Log out', style: TextStyle(fontSize: 12)),
+          ),
         ],
       ],
     );

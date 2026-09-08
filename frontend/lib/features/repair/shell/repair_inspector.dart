@@ -16,20 +16,29 @@ class RepairInspector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppTheme.surfaceAlt,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ColoredBox(
+      color: AppTheme.chrome,
+      child: Row(
         children: [
-          _InspectorHeader(title: title, onClose: onClose),
-          Divider(height: 1, thickness: 1, color: AppTheme.border),
+          Container(width: 1, color: AppTheme.borderSubtle),
           Expanded(
-            child: child == null
-                ? const _InspectorEmptyState()
-                : SingleChildScrollView(
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    child: child,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _InspectorHeader(title: title, onClose: onClose),
+                Expanded(
+                  child: ColoredBox(
+                    color: AppTheme.surface,
+                    child: child == null
+                        ? const _InspectorEmptyState()
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                            child: child,
+                          ),
                   ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -45,36 +54,43 @@ class _InspectorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
       ),
       child: Row(
         children: [
+          const Icon(
+            Icons.view_sidebar_outlined,
+            size: 14,
+            color: AppTheme.textMuted,
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
-              style: TextStyle(
-                color: AppTheme.text,
+              style: const TextStyle(
+                fontFamily: AppTheme.mono,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
-                letterSpacing: 0.2,
+                color: AppTheme.textSecondary,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (onClose != null)
-            InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  Icons.close,
-                  size: 16,
-                  color: AppTheme.textMuted,
-                ),
+            IconButton(
+              onPressed: onClose,
+              tooltip: 'Close inspector',
+              icon: const Icon(
+                Icons.close,
+                size: 16,
+                color: AppTheme.textMuted,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             ),
         ],
       ),
@@ -88,16 +104,9 @@ class _InspectorEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.lg),
-        child: Text(
-          'No inspector content for this stage.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 12.5,
-          ),
-        ),
+      child: Text(
+        'Nothing selected',
+        style: AppTypography.caption.copyWith(color: AppTheme.textMuted),
       ),
     );
   }

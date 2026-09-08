@@ -1,9 +1,3 @@
-/// Line-oriented display of one PatchHunk.
-///
-/// Built from `old_text` / `new_text` only — no extra LLM diff.
-/// Shared prefix and suffix lines stay unmarked so the hunk still
-/// shows surrounding context when the generator included it.
-
 enum DiffKind { unchanged, added, removed }
 
 class DiffLine {

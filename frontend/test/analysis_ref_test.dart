@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/models/models.dart';
-import 'package:patchpilot_web/features/repair/diagnosis/screens/diagnosis_screen.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
@@ -53,7 +53,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.build(),
-        home: DiagnosisScreen(
+        home: RepairSession(
           api: ApiClient(
             client: MockClient(
               (request) async => http.Response('{"detail":"none"}', 502),
@@ -70,8 +70,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Analyzed at f0bfc5b317f4'), findsOneWidget);
+    expect(find.text('Active filter uses task.isCompleted.'), findsOneWidget);
+
+    await tester.tap(find.text('Patch'));
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('Patching f0bfc5b317f4'), findsOneWidget);
     expect(find.text('Generate patch'), findsOneWidget);
-    expect(find.text('Active filter uses task.isCompleted.'), findsOneWidget);
   });
 }

@@ -43,17 +43,17 @@ class Branding extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             color: AppTheme.accent,
-            borderRadius: BorderRadius.circular(size * 0.25),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
           ),
-          child: Icon(Icons.radar, size: size * 0.62, color: Colors.white),
+          child: Icon(Icons.radar, size: size * 0.58, color: Colors.white),
         ),
-        SizedBox(width: size * 0.4),
+        SizedBox(width: size * 0.38),
         Text(
           'PatchPilot',
           style: TextStyle(
-            fontSize: size * 0.68,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
+            fontSize: size * 0.62,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
             color: AppTheme.text,
           ),
         ),
@@ -62,13 +62,14 @@ class Branding extends StatelessWidget {
   }
 }
 
-/// A bordered panel. Every block of content on a page sits in one, so
-/// the layout reads as a set of discrete sections.
+/// Elevated surface block. Borders are optional — depth comes from the
+/// surface tint rather than a box outline.
 class Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   final Color? background;
   final Color? borderColor;
+  final bool bordered;
 
   const Panel({
     super.key,
@@ -76,6 +77,7 @@ class Panel extends StatelessWidget {
     this.padding = AppSpacing.panelPadding,
     this.background,
     this.borderColor,
+    this.bordered = false,
   });
 
   @override
@@ -84,9 +86,11 @@ class Panel extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: background ?? AppTheme.surface,
-        border: Border.all(color: borderColor ?? AppTheme.border),
+        color: background ?? AppTheme.surfaceElevated,
         borderRadius: AppRadii.panel,
+        border: bordered || borderColor != null
+            ? Border.all(color: borderColor ?? AppTheme.borderSubtle)
+            : null,
       ),
       child: child,
     );
@@ -102,7 +106,7 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
           Flexible(
@@ -121,7 +125,7 @@ class SectionTitle extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                style: AppTypography.caption,
               ),
             ),
           ],
@@ -148,16 +152,15 @@ class StatusChip extends StatelessWidget {
     return Container(
       padding: AppSpacing.chipPadding,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        color: color.withValues(alpha: 0.12),
         borderRadius: AppRadii.chip,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 6),
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 5),
           ],
           Text(label, style: AppTypography.chip.copyWith(color: color)),
         ],
@@ -169,23 +172,59 @@ class StatusChip extends StatelessWidget {
 class ErrorNotice extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
+  final String? title;
 
-  const ErrorNotice({super.key, required this.message, this.onRetry});
+  const ErrorNotice({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
-      background: AppTheme.danger.withValues(alpha: 0.08),
-      borderColor: AppTheme.danger.withValues(alpha: 0.4),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppTheme.danger.withValues(alpha: 0.08),
+        borderRadius: AppRadii.panel,
+        border: Border(
+          left: BorderSide(
+            color: AppTheme.danger.withValues(alpha: 0.85),
+            width: 3,
+          ),
+        ),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppTheme.danger, size: 20),
+          const Icon(Icons.error_outline, color: AppTheme.danger, size: 18),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: AppTheme.text, height: 1.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.danger,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
           if (onRetry != null) ...[
@@ -292,24 +331,38 @@ class ShowMoreLink extends StatelessWidget {
 class EmptyNotice extends StatelessWidget {
   final IconData icon;
   final String message;
+  final String? title;
 
-  const EmptyNotice({super.key, required this.icon, required this.message});
+  const EmptyNotice({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
+    return Padding(
       padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.page,
-        horizontal: AppSpacing.xxl,
+        vertical: AppSpacing.xxl,
+        horizontal: AppSpacing.lg,
       ),
       child: Column(
         children: [
-          Icon(icon, size: 32, color: AppTheme.textMuted),
-          const SizedBox(height: AppSpacing.md),
+          Icon(icon, size: 28, color: AppTheme.textMuted),
+          const SizedBox(height: AppSpacing.sm),
+          if (title != null) ...[
+            Text(
+              title!,
+              textAlign: TextAlign.center,
+              style: AppTypography.title.copyWith(fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+          ],
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.textMuted, height: 1.5),
+            style: AppTypography.muted,
           ),
         ],
       ),

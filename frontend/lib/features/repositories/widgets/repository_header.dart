@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/models/models.dart';
 
+/// Compact breadcrumb: back affordance + repository identity.
 class RepositoryHeader extends StatelessWidget {
   final Repository repository;
   final VoidCallback onBack;
@@ -15,34 +16,48 @@ class RepositoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final description = repository.description;
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to repositories',
-          color: AppTheme.textMuted,
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back, size: 17),
+              tooltip: 'Back to repositories',
+              color: AppTheme.textMuted,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            ),
+          ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 repository.fullName,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
+                  fontSize: 15.5,
+                  fontFamily: AppTheme.mono,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              if (repository.description != null &&
-                  repository.description!.isNotEmpty) ...[
-                const SizedBox(height: 4),
+              if (description != null && description.isNotEmpty) ...[
+                const SizedBox(height: 2),
                 Text(
-                  repository.description!,
+                  description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     color: AppTheme.textMuted,
                   ),
                 ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 
+/// Compact, single-line repository/snapshot readiness metadata.
+/// Same inputs, same status semantics — quieter presentation only.
 class SnapshotStatus extends StatelessWidget {
   final String status;
   final String? sha;
@@ -20,13 +22,11 @@ class SnapshotStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    late final IconData icon;
-    late final Color color;
+    late final Color dotColor;
     late final String label;
 
     if (status == 'ready') {
-      icon = Icons.check_circle_outline;
-      color = AppTheme.success;
+      dotColor = AppTheme.success;
       final shortSha = (sha ?? '').isEmpty
           ? ''
           : (sha!.length >= 7 ? sha!.substring(0, 7) : sha!);
@@ -34,14 +34,12 @@ class SnapshotStatus extends StatelessWidget {
           ? 'Repository ready'
           : 'Repository ready at $shortSha · $fileCount files';
     } else if (status == 'failed') {
-      icon = Icons.error_outline;
-      color = AppTheme.danger;
+      dotColor = AppTheme.danger;
       label = error == null || error!.isEmpty
           ? 'Could not prepare the repository'
           : 'Could not prepare the repository: $error';
     } else {
-      icon = Icons.hourglass_empty;
-      color = AppTheme.textMuted;
+      dotColor = AppTheme.textMuted;
       final clamped = percent.clamp(0, 100);
       label = clamped > 0
           ? 'Preparing repository… $clamped%'
@@ -52,21 +50,39 @@ class SnapshotStatus extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: color),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(label, style: TextStyle(fontSize: 13, color: color)),
+              child: Text(
+                label,
+                maxLines: status == 'failed' ? 2 : 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: status == 'failed'
+                      ? AppTheme.danger
+                      : AppTheme.textMuted,
+                ),
+              ),
             ),
           ],
         ),
         if (status == 'preparing') ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: percent <= 0 ? null : (percent.clamp(0, 100) / 100),
-              minHeight: 6,
+              minHeight: 3,
               color: AppTheme.accent,
               backgroundColor: AppTheme.border,
             ),

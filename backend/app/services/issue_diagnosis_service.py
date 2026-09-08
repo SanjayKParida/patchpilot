@@ -416,7 +416,10 @@ Requirements:
 - Do NOT report line numbers. Name the symbol; its location is
   resolved from the code, not from you.
 - explanation should connect the issue to the supplied code.
-- suggested_fix should describe the likely corrective action.
+- suggested_fix should name the likely corrective action at
+  root_cause_symbols, using the issue's example. Describe the
+  comparison, assignment, or branch to change. Do not prescribe
+  handling for types, files, or cases the issue does not mention.
 - Do not assume rank #1 is the culprit.
 - Do not blame a configuration file merely because it contains
   a technology name.

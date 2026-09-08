@@ -12,9 +12,13 @@ import 'package:patchpilot_web/services/github_redirect.dart';
 
 class _Redirect implements GithubRedirect {
   String? url;
+  String? opened;
 
   @override
   void go(String value) => url = value;
+
+  @override
+  void open(String value) => opened = value;
 }
 
 http.Response _json(Object body, [int status = 200]) {
@@ -65,9 +69,7 @@ const _repos = [
   },
 ];
 
-ApiClient _client(
-  Future<http.Response> Function(http.Request) handler,
-) {
+ApiClient _client(Future<http.Response> Function(http.Request) handler) {
   return ApiClient(client: MockClient(handler));
 }
 
@@ -91,8 +93,9 @@ Future<void> _pumpApp(
 }
 
 void main() {
-  testWidgets('startup shows a loading state before auth resolves',
-      (tester) async {
+  testWidgets('startup shows a loading state before auth resolves', (
+    tester,
+  ) async {
     final gate = Completer<http.Response>();
     final api = _client((request) {
       if (request.url.path.endsWith('/auth/me')) {
@@ -152,15 +155,19 @@ void main() {
     await _pumpApp(tester, api: api);
 
     expect(find.text('Demo'), findsWidgets);
-    expect(find.text('SanjayKParida/patchpilot-diagnosis-demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('Open Demo'), findsOneWidget);
     expect(find.text('Connect GitHub'), findsWidgets);
     expect(find.text('octocat'), findsNothing);
     expect(find.text('Log out'), findsNothing);
   });
 
-  testWidgets('authenticated startup shows connected user and repos',
-      (tester) async {
+  testWidgets('authenticated startup shows connected user and repos', (
+    tester,
+  ) async {
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
         return _json({'authenticated': true, 'user': _user});
@@ -253,8 +260,9 @@ void main() {
     expect(find.text('Manage GitHub access'), findsNothing);
   });
 
-  testWidgets('refresh preserves login when /auth/me still has a session',
-      (tester) async {
+  testWidgets('refresh preserves login when /auth/me still has a session', (
+    tester,
+  ) async {
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
         return _json({'authenticated': true, 'user': _user});
@@ -279,8 +287,9 @@ void main() {
     expect(find.text('octocat/private-app'), findsOneWidget);
   });
 
-  testWidgets('demo is visually prioritized above Connect GitHub',
-      (tester) async {
+  testWidgets('repositories are prioritized above the demo', (
+    tester,
+  ) async {
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
         return _json({'authenticated': false, 'user': null});
@@ -293,10 +302,11 @@ void main() {
 
     await _pumpApp(tester, api: api);
 
+    final connect = tester.getTopLeft(
+      find.widgetWithText(FilledButton, 'Connect GitHub'),
+    );
     final demo = tester.getTopLeft(find.text('Open Demo'));
-    final connect =
-        tester.getTopLeft(find.widgetWithText(FilledButton, 'Connect GitHub'));
-    expect(demo.dy, lessThan(connect.dy));
+    expect(connect.dy, lessThan(demo.dy));
   });
 
   testWidgets('unauthorized repositories are not tappable', (tester) async {
@@ -325,8 +335,9 @@ void main() {
     expect(find.text('octocat/private-app'), findsOneWidget);
   });
 
-  testWidgets('authenticated with no repositories shows Select repositories',
-      (tester) async {
+  testWidgets('authenticated with no repositories shows Select repositories', (
+    tester,
+  ) async {
     final redirect = _Redirect();
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
@@ -350,8 +361,10 @@ void main() {
     await _pumpApp(tester, api: api, redirect: redirect);
 
     expect(find.text('Connect a repository'), findsOneWidget);
-    expect(find.text('Choose the repositories PatchPilot can access.'),
-        findsOneWidget);
+    expect(
+      find.text('Choose the repositories PatchPilot can access.'),
+      findsOneWidget,
+    );
     expect(
       find.widgetWithText(FilledButton, 'Select repositories on GitHub'),
       findsOneWidget,
@@ -374,8 +387,9 @@ void main() {
     );
   });
 
-  testWidgets('Manage GitHub access opens the installation URL',
-      (tester) async {
+  testWidgets('Manage GitHub access opens the installation URL', (
+    tester,
+  ) async {
     final redirect = _Redirect();
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
@@ -406,8 +420,9 @@ void main() {
     );
   });
 
-  testWidgets('post-install return refreshes authorized repositories',
-      (tester) async {
+  testWidgets('post-install return refreshes authorized repositories', (
+    tester,
+  ) async {
     var refreshed = false;
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
@@ -508,9 +523,7 @@ void main() {
 
     expect(find.text('This repository has no open issues.'), findsOneWidget);
     expect(
-      find.text(
-        'Commit SHA or ref (optional). Leave blank for current HEAD.',
-      ),
+      find.text('Commit SHA or ref (optional). Leave blank for current HEAD.'),
       findsOneWidget,
     );
     expect(find.text('Open Demo'), findsNothing);

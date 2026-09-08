@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/theme/app_theme.dart';
 
 class RepairShell extends StatelessWidget {
   const RepairShell({
@@ -10,10 +10,9 @@ class RepairShell extends StatelessWidget {
     required this.content,
     required this.statusBar,
     this.inspector,
-    this.showInspector = true,
-    this.workflowRailWidth = 240,
-    this.inspectorPanelWidth = 320,
-    this.collapseInspectorBreakpoint = 1100,
+    this.continueAction,
+    this.showInspector = false,
+    this.inspectorPanelWidth = 360,
   });
 
   final Widget header;
@@ -21,67 +20,57 @@ class RepairShell extends StatelessWidget {
   final Widget content;
   final Widget statusBar;
   final Widget? inspector;
+  final Widget? continueAction;
   final bool showInspector;
-  final double workflowRailWidth;
   final double inspectorPanelWidth;
-  final double collapseInspectorBreakpoint;
-
-  bool _shouldShowInspector(double availableWidth) {
-    if (inspector == null || !showInspector) return false;
-    return availableWidth >= collapseInspectorBreakpoint;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = AppTheme.border;
+    final inspectorOpen = inspector != null && showInspector;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Persistent header.
-            header,
-            Divider(height: 1, thickness: 1, color: borderColor),
-
+            ColoredBox(
+              color: AppTheme.chrome,
+              child: Column(children: [header, workflow]),
+            ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final inspectorVisible = _shouldShowInspector(
-                    constraints.maxWidth,
-                  );
-
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Fixed-width workflow rail.
-                      SizedBox(width: workflowRailWidth, child: workflow),
-                      VerticalDivider(
-                        width: 1,
-                        thickness: 1,
-                        color: borderColor,
-                      ),
-
-                      Expanded(child: ClipRect(child: content)),
-
-                      // Optional inspector panel.
-                      if (inspectorVisible) ...[
-                        VerticalDivider(
-                          width: 1,
-                          thickness: 1,
-                          color: borderColor,
+              child: ColoredBox(
+                color: AppTheme.workspace,
+                child: Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned.fill(child: ClipRect(child: content)),
+                    if (inspectorOpen)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOut,
+                          builder: (context, t, child) => Transform.translate(
+                            offset: Offset((1 - t) * 20, 0),
+                            child: Opacity(opacity: t, child: child),
+                          ),
+                          child: SizedBox(
+                            width: inspectorPanelWidth,
+                            child: inspector,
+                          ),
                         ),
-                        SizedBox(width: inspectorPanelWidth, child: inspector),
-                      ],
-                    ],
-                  );
-                },
+                      ),
+                    if (continueAction != null)
+                      Positioned(right: 20, bottom: 20, child: continueAction!),
+                  ],
+                ),
               ),
             ),
-
-            // Persistent bottom status/action bar.
-            Divider(height: 1, thickness: 1, color: borderColor),
-            statusBar,
+            ColoredBox(color: AppTheme.chrome, child: statusBar),
           ],
         ),
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/features/dashboard/screens/dashboard_screen.dart';
-import 'package:patchpilot_web/features/repair/diagnosis/screens/diagnosis_screen.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
 import 'package:patchpilot_web/features/repositories/screens/issues_screen.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
@@ -10,15 +10,6 @@ import 'package:patchpilot_web/services/browser_location.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
 import 'package:patchpilot_web/services/session_token.dart';
 
-/// Navigation for the whole product.
-///
-/// Dashboard -> Issues -> Diagnosis, with back at every step. A
-/// Navigator stack is all this needs; the only shared state is the
-/// current repository, issue, and PatchPilot session.
-///
-/// Repair/shell will later host the shared Issue → Diagnosis →
-/// Context → Patch → Validation → Review → Pull Request workspace.
-/// Until that exists, diagnosis is still pushed as its own route.
 class AppShell extends StatefulWidget {
   final ApiClient? api;
   final GithubRedirect? redirect;
@@ -128,6 +119,7 @@ class _AppShellState extends State<AppShell> {
       MaterialPageRoute<void>(
         builder: (_) => IssuesScreen(
           api: _api,
+          cache: _cache,
           repository: repository,
           onIssueSelected: _openDiagnosis,
           onBack: () => _navigatorKey.currentState?.pop(),
@@ -142,12 +134,13 @@ class _AppShellState extends State<AppShell> {
 
     _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(
-        builder: (_) => DiagnosisScreen(
+        builder: (_) => RepairSession(
           api: _api,
           cache: _cache,
           repository: repository,
           issue: issue,
           ref: ref,
+          redirect: _redirect,
           onBack: () => _navigatorKey.currentState?.pop(),
         ),
       ),

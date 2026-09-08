@@ -345,7 +345,7 @@ void main() {
     expect(find.text('Generated'), findsOneWidget);
     expect(find.text('90% confidence'), findsOneWidget);
     expect(find.text('lib/bloc/task_bloc.dart'), findsOneWidget);
-    expect(find.textContaining('Lines 2–2'), findsOneWidget);
+    expect(find.textContaining('@@ 2,2 @@'), findsOneWidget);
     expect(find.textContaining('missing emit'), findsOneWidget);
     expect(find.textContaining('emit(TaskLoaded())'), findsOneWidget);
     expect(find.text('Not validated'), findsOneWidget);
@@ -392,10 +392,8 @@ void main() {
     await _settle(tester);
 
     expect(find.text('Generate patch'), findsOneWidget);
-    expect(
-      find.text('No patch has been generated for this analysis yet.'),
-      findsOneWidget,
-    );
+    expect(find.text('No patch yet'), findsOneWidget);
+    expect(find.textContaining('Generate a patch to preview'), findsOneWidget);
     expect(find.text('Approve patch'), findsNothing);
 
     await tester.tap(find.text('Generate patch'));
@@ -406,15 +404,11 @@ void main() {
     expect(find.text('90% confidence'), findsOneWidget);
     expect(find.text('emit loaded state after refresh'), findsOneWidget);
     expect(find.text('lib/bloc/task_bloc.dart'), findsOneWidget);
-    expect(find.textContaining('Lines 2–2'), findsOneWidget);
+    expect(find.textContaining('@@ 2,2 @@'), findsOneWidget);
     expect(find.textContaining('missing emit'), findsOneWidget);
     expect(find.textContaining('emit(TaskLoaded())'), findsOneWidget);
     expect(find.text('Not validated'), findsOneWidget);
     expect(find.text('Approve patch'), findsNothing);
-    expect(
-      find.textContaining('not the same as a working patch'),
-      findsOneWidget,
-    );
   });
 
   testWidgets('double tap generate does not start a second request', (

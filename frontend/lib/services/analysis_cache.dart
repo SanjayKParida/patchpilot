@@ -1,3 +1,4 @@
+import '../models/context_package.dart';
 import '../models/models.dart';
 
 /// Remembers completed analyses for the lifetime of the session.
@@ -16,6 +17,10 @@ class AnalysisCache {
   /// Source is cached per analysis, not globally: file contents belong
   /// to the snapshot that analysis ran against.
   final Map<String, FileSource> _files = {};
+
+  /// Context packages are fetched from GET /analyses/{id}/context, not
+  /// the polling Analysis payload, and are remembered per analysis id.
+  final Map<String, ContextPackage> _contexts = {};
 
   static String keyFor(
     String owner,
@@ -46,6 +51,17 @@ class AnalysisCache {
     _files.removeWhere(
       (fileKey, _) => fileKey.startsWith('${analysis.id}:'),
     );
+    _contexts.remove(analysis.id);
+  }
+
+  // ---------------------------------------------------------
+  // Context packages
+  // ---------------------------------------------------------
+
+  ContextPackage? readContext(String analysisId) => _contexts[analysisId];
+
+  void saveContext(String analysisId, ContextPackage package) {
+    _contexts[analysisId] = package;
   }
 
   // ---------------------------------------------------------

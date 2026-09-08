@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/theme/app_theme.dart';
+
+import 'widgets/repair_stage_indicator.dart';
 
 /// The ordered stages of the PatchPilot repair workflow.
-///
-/// This enum exists purely to identify/order stages for display in
-/// [RepairWorkflow] — it carries no behavior and makes no assumptions
-/// about how a given stage is implemented.
 enum RepairStage {
   issue,
   diagnosis,
@@ -38,6 +36,26 @@ extension RepairStageLabel on RepairStage {
   }
 }
 
+extension RepairStageAccent on RepairStage {
+  Color get accent {
+    switch (this) {
+      case RepairStage.issue:
+      case RepairStage.context:
+        return AppTheme.textMuted;
+      case RepairStage.diagnosis:
+        return AppTheme.stageDiagnosis;
+      case RepairStage.patch:
+        return AppTheme.stagePatch;
+      case RepairStage.validation:
+        return AppTheme.stageValidation;
+      case RepairStage.review:
+        return AppTheme.stageReview;
+      case RepairStage.pullRequest:
+        return AppTheme.stagePullRequest;
+    }
+  }
+}
+
 class RepairWorkflow extends StatelessWidget {
   const RepairWorkflow({
     super.key,
@@ -54,186 +72,51 @@ class RepairWorkflow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppTheme.surface,
-      padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-      child: ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: stages.length,
-        itemBuilder: (context, index) {
-          final stage = stages[index];
-          final isCurrent = stage == currentStage;
-          final isCompleted = completedStages.contains(stage);
-          final isLast = index == stages.length - 1;
-
-          return _WorkflowStageTile(
-            label: stage.label,
-            isCurrent: isCurrent,
-            isCompleted: isCompleted,
-            isLast: isLast,
-            onTap: onStageSelected == null
-                ? null
-                : () => onStageSelected!(stage),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _WorkflowStageTile extends StatelessWidget {
-  const _WorkflowStageTile({
-    required this.label,
-    required this.isCurrent,
-    required this.isCompleted,
-    required this.isLast,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isCurrent;
-  final bool isCompleted;
-  final bool isLast;
-  final VoidCallback? onTap;
-
-  static const double _nodeSize = 16;
-  static const double _lineWidth = 1.5;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color nodeColor;
-    final Color labelColor;
-    final FontWeight labelWeight;
-
-    if (isCurrent) {
-      nodeColor = AppTheme.accent;
-      labelColor = AppTheme.text;
-      labelWeight = FontWeight.w600;
-    } else if (isCompleted) {
-      nodeColor = AppTheme.textMuted;
-      labelColor = AppTheme.text;
-      labelWeight = FontWeight.w400;
-    } else {
-      nodeColor = AppTheme.border;
-      labelColor = AppTheme.textMuted;
-      labelWeight = FontWeight.w400;
-    }
-
-    final content = Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Node + connecting line column.
-            SizedBox(
-              width: _nodeSize,
-              child: Column(
-                children: [
-                  _StageNode(
-                    isCurrent: isCurrent,
-                    isCompleted: isCompleted,
-                    color: nodeColor,
+    return SizedBox(
+      height: 36,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.shellPadding - 4,
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (int i = 0; i < stages.length; i++) ...[
+                RepairStageIndicator(
+                  label: stages[i].label,
+                  stageAccent: stages[i].accent,
+                  state: _visualState(
+                    isCurrent: stages[i] == currentStage,
+                    isCompleted: completedStages.contains(stages[i]),
                   ),
-                  if (!isLast)
-                    Expanded(
-                      child: Container(
-                        width: _lineWidth,
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        color: AppTheme.border,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: labelColor,
-                    fontWeight: labelWeight,
-                    fontSize: 13,
-                  ),
+                  onTap: onStageSelected == null
+                      ? null
+                      : () => onStageSelected!(stages[i]),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (onTap == null) return content;
-
-    return InkWell(onTap: onTap, child: content);
-  }
-}
-
-class _StageNode extends StatelessWidget {
-  const _StageNode({
-    required this.isCurrent,
-    required this.isCompleted,
-    required this.color,
-  });
-
-  final bool isCurrent;
-  final bool isCompleted;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = _WorkflowStageTile._nodeSize;
-
-    if (isCompleted && !isCurrent) {
-      return Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 1.5),
-        ),
-        child: Icon(Icons.check, size: 10, color: color),
-      );
-    }
-
-    if (isCurrent) {
-      return Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppTheme.accent,
-        ),
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppTheme.surface,
+                if (i != stages.length - 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 12,
+                      color: AppTheme.borderSubtle,
+                    ),
+                  ),
+              ],
+            ],
           ),
         ),
-      );
-    }
-
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 1.5),
-        ),
       ),
     );
+  }
+
+  static RepairStageVisualState _visualState({
+    required bool isCurrent,
+    required bool isCompleted,
+  }) {
+    if (isCurrent) return RepairStageVisualState.active;
+    if (isCompleted) return RepairStageVisualState.completed;
+    return RepairStageVisualState.locked;
   }
 }

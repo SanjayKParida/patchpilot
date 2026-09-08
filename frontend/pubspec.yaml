@@ -65,6 +65,17 @@ flutter:
   assets:
     - google_fonts/
 
+  fonts:
+    - family: JetBrains Mono
+      fonts:
+        - asset: google_fonts/JetBrainsMono-Regular.ttf
+        - asset: google_fonts/JetBrainsMono-Italic.ttf
+          style: italic
+        - asset: google_fonts/JetBrainsMono-SemiBold.ttf
+          weight: 600
+        - asset: google_fonts/JetBrainsMono-Bold.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

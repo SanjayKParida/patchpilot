@@ -1,7 +1,9 @@
+// root_cause_section.dart
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../models/models.dart';
+import 'symbol_button.dart';
 
 class RootCauseSection extends StatelessWidget {
   const RootCauseSection({
@@ -38,73 +40,69 @@ class RootCauseSection extends StatelessWidget {
     final resolvedLine = _resolvedLine;
     final confidenceColor = _confidenceColor();
 
-    return Padding(
-      padding: EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'ROOT CAUSE',
-                style: TextStyle(
-                  color: AppTheme.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const Spacer(),
-              _ConfidenceBadge(
-                label: diagnosis.confidencePercent,
-                color: confidenceColor,
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.sm),
-          Text(
-            diagnosis.rootCause,
-            style: TextStyle(
-              color: AppTheme.text,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-            ),
-          ),
-          if (diagnosis.explanation.isNotEmpty) ...[
-            SizedBox(height: AppSpacing.sm),
-            Text(
-              diagnosis.explanation,
-              style: TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 13.5,
-                height: 1.5,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text('ROOT CAUSE', style: AppTypography.sectionLabel),
+            const Spacer(),
+            _ConfidenceBadge(
+              label: diagnosis.confidencePercent,
+              color: confidenceColor,
             ),
           ],
-          SizedBox(height: AppSpacing.lg),
-          Divider(height: 1, thickness: 1, color: AppTheme.border),
-          SizedBox(height: AppSpacing.lg),
-          if (resolvedPath != null)
-            _ResolvedLocation(
-              path: resolvedPath,
-              line: resolvedLine,
-              accentColor: AppTheme.accent,
-            ),
-          SizedBox(height: AppSpacing.md),
-          _ViewRootCauseButton(
-            enabled: resolvedPath != null,
+        ),
+        const SizedBox(height: 14),
+        // The centerpiece of the whole screen — everything else exists
+        // to support or elaborate on this one statement.
+        Text(
+          diagnosis.rootCause,
+          style: const TextStyle(
+            color: AppTheme.text,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            height: 1.4,
+            letterSpacing: -0.3,
+          ),
+        ),
+        if (resolvedPath != null) ...[
+          const SizedBox(height: 20),
+          _SourceRow(
+            path: resolvedPath,
+            line: resolvedLine,
+            onOpen: () => onViewRootCause(resolvedPath, resolvedLine),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
             onPressed: resolvedPath == null
                 ? null
                 : () => onViewRootCause(resolvedPath, resolvedLine),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.accent,
+              disabledForegroundColor: AppTheme.textMuted,
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'View root cause',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
           ),
-          if (diagnosis.locations.isNotEmpty) ...[
-            SizedBox(height: AppSpacing.lg),
-            _RelatedDeclarations(locations: diagnosis.locations),
-          ],
+        ),
+        if (diagnosis.locations.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          _RelatedDeclarations(
+            locations: diagnosis.locations,
+            onOpen: onViewRootCause,
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -125,13 +123,14 @@ class _ConfidenceBadge extends StatelessWidget {
           height: 6,
           decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
-        SizedBox(width: AppSpacing.xs),
+        const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppTheme.textMuted,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w500,
+            fontFamily: AppTheme.mono,
           ),
         ),
       ],
@@ -139,142 +138,101 @@ class _ConfidenceBadge extends StatelessWidget {
   }
 }
 
-class _ResolvedLocation extends StatelessWidget {
-  const _ResolvedLocation({
+/// The defect location, presented like a jump-to-source affordance in
+/// an editor rather than a plain line of text or a generic button.
+class _SourceRow extends StatelessWidget {
+  const _SourceRow({
     required this.path,
     required this.line,
-    required this.accentColor,
+    required this.onOpen,
   });
 
   final String path;
   final int? line;
-  final Color accentColor;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = line == null ? path : '$path:$line';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text('SOURCE', style: AppTypography.sectionLabel),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onOpen,
+                borderRadius: BorderRadius.circular(4),
+                hoverColor: AppTheme.accent.withValues(alpha: 0.08),
+                splashColor: AppTheme.accent.withValues(alpha: 0.12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 2,
+                    vertical: 3,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.code, size: 13, color: AppTheme.accent),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          location,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.accent,
+                            fontSize: 12,
+                            fontFamily: AppTheme.mono,
+                            height: 1.35,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RelatedDeclarations extends StatelessWidget {
+  const _RelatedDeclarations({required this.locations, required this.onOpen});
+
+  final List<SymbolLocation> locations;
+  final void Function(String path, int? line) onOpen;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 2,
-          height: 34,
-          margin: EdgeInsets.only(right: AppSpacing.sm, top: 2),
-          color: accentColor,
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text('DECLARATIONS', style: AppTypography.sectionLabel),
         ),
+        const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                path,
-                style: TextStyle(
-                  color: AppTheme.text,
-                  fontFamily: AppTheme.mono,
-                  fontSize: 12.5,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (line != null) ...[
-                SizedBox(height: 2),
-                Text(
-                  'line $line',
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontFamily: AppTheme.mono,
-                    fontSize: 12,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: locations
+                .map(
+                  (location) => SymbolButton(
+                    location: location,
+                    onTap: () => onOpen(location.path, location.line),
                   ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ViewRootCauseButton extends StatelessWidget {
-  const _ViewRootCauseButton({
-    required this.enabled,
-    required this.onPressed,
-  });
-
-  final bool enabled;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.accent,
-        foregroundColor: AppTheme.surface,
-        disabledBackgroundColor: AppTheme.border,
-        disabledForegroundColor: AppTheme.textMuted,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      child: const Text('View root cause'),
-    );
-  }
-}
-
-class _RelatedDeclarations extends StatelessWidget {
-  const _RelatedDeclarations({required this.locations});
-
-  final List<SymbolLocation> locations;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'RELATED DECLARATIONS',
-          style: TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.0,
-          ),
-        ),
-        SizedBox(height: AppSpacing.sm),
-        ...locations.map(
-          (location) => Padding(
-            padding: EdgeInsets.only(bottom: AppSpacing.xs),
-            child: RichText(
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: location.symbol,
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontFamily: AppTheme.mono,
-                      fontSize: 12,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' \u00B7 ${location.label}',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontFamily: AppTheme.mono,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                )
+                .toList(),
           ),
         ),
       ],

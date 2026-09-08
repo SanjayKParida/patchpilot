@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Spacing used by the current PatchPilot UI.
+/// Spacing for the PatchPilot UI.
 class AppSpacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -8,19 +8,20 @@ class AppSpacing {
   static const double lg = 16;
   static const double xl = 20;
   static const double xxl = 24;
-  static const double section = 32;
-  static const double page = 48;
+  static const double section = 28;
+  static const double page = 32;
 
-  static const double maxContentWidth = 960;
+  static const double maxContentWidth = 1040;
+  static const double shellPadding = 16;
 
   static const EdgeInsets inputPadding = EdgeInsets.symmetric(
-    horizontal: lg,
-    vertical: lg,
+    horizontal: md,
+    vertical: md,
   );
 
   static const EdgeInsets buttonPadding = EdgeInsets.symmetric(
-    horizontal: xxl,
-    vertical: xl,
+    horizontal: lg,
+    vertical: md,
   );
 
   static const EdgeInsets pagePadding = EdgeInsets.symmetric(
@@ -28,10 +29,10 @@ class AppSpacing {
     vertical: section,
   );
 
-  static const EdgeInsets panelPadding = EdgeInsets.all(xl);
+  static const EdgeInsets panelPadding = EdgeInsets.all(lg);
 
   static const EdgeInsets chipPadding = EdgeInsets.symmetric(
-    horizontal: 10,
-    vertical: 6,
+    horizontal: 8,
+    vertical: 4,
   );
 }

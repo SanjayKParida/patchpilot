@@ -7,4 +7,9 @@ class GithubRedirectImpl implements GithubRedirect {
   void go(String url) {
     web.window.location.href = url;
   }
+
+  @override
+  void open(String url) {
+    web.window.open(url, '_blank');
+  }
 }

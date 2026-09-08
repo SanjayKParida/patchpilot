@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/features/repositories/screens/issues_screen.dart';
+import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
 http.Response _json(Object body, [int status = 200]) {
@@ -134,6 +135,7 @@ void main() {
       MaterialApp(
         home: IssuesScreen(
           api: api,
+          cache: AnalysisCache(),
           repository: _repo,
           onIssueSelected: (_, {String? ref}) {},
           onBack: () {},
@@ -168,6 +170,7 @@ void main() {
       MaterialApp(
         home: IssuesScreen(
           api: api,
+          cache: AnalysisCache(),
           repository: _repo,
           onIssueSelected: (_, {String? ref}) {},
           onBack: () {},
@@ -221,6 +224,7 @@ void main() {
       MaterialApp(
         home: IssuesScreen(
           api: api,
+          cache: AnalysisCache(),
           repository: _repo,
           onIssueSelected: (_, {String? ref}) {},
           onBack: () {},
@@ -233,10 +237,13 @@ void main() {
     expect(find.textContaining('Preparing repository… 37%'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
-    final analyze = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Analyze'),
+    final disabledInkWell = tester.widget<InkWell>(
+      find.ancestor(
+        of: find.text('Spinner stuck'),
+        matching: find.byType(InkWell),
+      ),
     );
-    expect(analyze.onPressed, isNull);
+    expect(disabledInkWell.onTap, isNull);
 
     gate.complete(
       _json({
@@ -251,9 +258,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Repository ready at aaaaaaa'), findsOneWidget);
-    final readyAnalyze = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Analyze'),
+    final enabledInkWell = tester.widget<InkWell>(
+      find.ancestor(
+        of: find.text('Spinner stuck'),
+        matching: find.byType(InkWell),
+      ),
     );
-    expect(readyAnalyze.onPressed, isNotNull);
+    expect(enabledInkWell.onTap, isNotNull);
+  });
+
+  testWidgets('completed analysis in session cache shows Analyzed on the row', (
+    tester,
+  ) async {
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, 1),
+      const Analysis(
+        id: 'a1',
+        status: AnalysisStatus.completed,
+        issueNumber: 1,
+      ),
+    );
+
+    final api = ApiClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/issues')) {
+          return _json([
+            {'number': 1, 'title': 'Already done', 'body': '', 'state': 'open'},
+            {'number': 2, 'title': 'Not yet', 'body': '', 'state': 'open'},
+          ]);
+        }
+        if (request.url.path.endsWith('/snapshot')) {
+          return _json({
+            'commit_sha': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            'status': 'ready',
+            'file_count': 3,
+          });
+        }
+        return _json({'detail': 'nope'}, 404);
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: IssuesScreen(
+          api: api,
+          cache: cache,
+          repository: _repo,
+          onIssueSelected: (_, {String? ref}) {},
+          onBack: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Analyzed'), findsOneWidget);
+    expect(find.text('Analyze'), findsOneWidget);
+    expect(find.text('Already done'), findsOneWidget);
+    expect(find.text('Not yet'), findsOneWidget);
   });
 }

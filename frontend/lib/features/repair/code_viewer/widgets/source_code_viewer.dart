@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:syntax_highlight/syntax_highlight.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -112,21 +111,7 @@ class _SourceCodeViewerState extends State<SourceCodeViewer> {
     _codeVerticalController = ScrollController();
     _gutterVerticalController = ScrollController();
     _codeVerticalController.addListener(_mirrorGutterOffset);
-    _ensureCodeFont();
     _requestHighlighting();
-  }
-
-  /// google_fonts loads asynchronously. Until the files are in the
-  /// [FontLoader], Flutter paints a fallback face that looks like the
-  /// old generic monospace. Bundled `google_fonts/` assets skip the
-  /// HTTP fetch; this still rebuilds once they are registered.
-  void _ensureCodeFont() {
-    GoogleFonts.jetBrainsMono();
-    GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w600);
-    GoogleFonts.jetBrainsMono(fontStyle: FontStyle.italic);
-    GoogleFonts.pendingFonts().then((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
@@ -167,9 +152,8 @@ class _SourceCodeViewerState extends State<SourceCodeViewer> {
     _GrammarLoader.ensure(language.grammarId).then((_) {
       if (!mounted || _highlightRequestKey != requestKey) return;
 
-      final wrapperStyle = GoogleFonts.jetBrainsMono(
+      final wrapperStyle = AppTypography.code(
         fontSize: widget.fontSize,
-        color: AppTheme.text,
         height: 1.0,
       );
       final theme = HighlighterTheme.fromConfiguration(
@@ -228,19 +212,19 @@ class _SourceCodeViewerState extends State<SourceCodeViewer> {
     final lastLineNumber = widget.startingLineNumber + lineCount - 1;
     final gutterDigits = math.max(2, lastLineNumber.toString().length);
 
-    final codeStyle = GoogleFonts.jetBrainsMono(
+    final codeStyle = AppTypography.code(
       fontSize: widget.fontSize,
-      color: AppTheme.text,
       height: 1.0,
     );
-    final gutterStyle = GoogleFonts.jetBrainsMono(
+    final gutterStyle = AppTypography.code(
       fontSize: widget.fontSize,
       color: AppTheme.textMuted,
       height: 1.0,
     );
     final lineHeight = widget.fontSize * _lineHeightFactor;
 
-    final gutterWidth = _measureTextWidth('0' * gutterDigits, gutterStyle) +
+    final gutterWidth =
+        _measureTextWidth('0' * gutterDigits, gutterStyle) +
         AppSpacing.xs +
         AppSpacing.sm +
         _gutterMarkerWidth;
@@ -301,11 +285,11 @@ class _SourceCodeViewerState extends State<SourceCodeViewer> {
                         itemExtent: lineHeight,
                         itemCount: lineCount,
                         itemBuilder: (context, index) {
-                          final lineNumber =
-                              widget.startingLineNumber + index;
+                          final lineNumber = widget.startingLineNumber + index;
                           final isHighlighted =
                               lineNumber == widget.highlightedLine;
-                          final spans = (highlightedLines != null &&
+                          final spans =
+                              (highlightedLines != null &&
                                   index < highlightedLines.length)
                               ? highlightedLines[index]
                               : null;
@@ -494,10 +478,7 @@ final String _highlighterThemeConfigJson = jsonEncode({
   'settings': [
     {
       'scope': ['comment', 'comment.line', 'comment.block'],
-      'settings': {
-        'foreground': '#5B6470',
-        'fontStyle': 'italic',
-      },
+      'settings': {'foreground': '#5B6470', 'fontStyle': 'italic'},
     },
     {
       'scope': [
@@ -529,11 +510,7 @@ final String _highlighterThemeConfigJson = jsonEncode({
       'settings': {'foreground': '#6FB8AD'},
     },
     {
-      'scope': [
-        'constant.numeric',
-        'constant.language',
-        'variable.language',
-      ],
+      'scope': ['constant.numeric', 'constant.language', 'variable.language'],
       'settings': {'foreground': '#C9A35A'},
     },
     {

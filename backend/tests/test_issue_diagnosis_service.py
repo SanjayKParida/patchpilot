@@ -372,6 +372,8 @@ def test_diagnosis_calls_llm():
 
     assert fake_llm.prompt is not None
     assert fake_llm.prompt.strip()
+    assert "Do not prescribe" in fake_llm.prompt
+    assert "issue does not mention" in fake_llm.prompt
 
 
 # ============================================================

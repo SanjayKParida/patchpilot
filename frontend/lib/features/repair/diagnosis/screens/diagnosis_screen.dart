@@ -1,3 +1,4 @@
+// diagnosis_screen.dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -5,18 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
-import 'package:patchpilot_web/features/repair/patch/widgets/patch_panel.dart';
-import 'package:patchpilot_web/features/repair/shell/repair_header.dart';
-import 'package:patchpilot_web/features/repair/shell/repair_inspector.dart';
-import 'package:patchpilot_web/features/repair/shell/repair_shell.dart';
-import 'package:patchpilot_web/features/repair/shell/repair_status_bar.dart';
-import 'package:patchpilot_web/features/repair/shell/repair_workflow.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
 import '../widgets/explanation_section.dart';
-import '../widgets/follow_up.dart';
 import '../widgets/open_file_button.dart';
 import '../widgets/relevant_files_section.dart';
 import '../widgets/root_cause_section.dart';
@@ -34,6 +28,8 @@ class DiagnosisScreen extends StatefulWidget {
   final Issue issue;
   final String? ref;
   final VoidCallback onBack;
+  final void Function(Analysis? analysis, String? error, bool fromCache)?
+  onSessionUpdate;
 
   const DiagnosisScreen({
     super.key,
@@ -43,6 +39,7 @@ class DiagnosisScreen extends StatefulWidget {
     required this.issue,
     required this.onBack,
     this.ref,
+    this.onSessionUpdate,
   });
 
   @override
@@ -58,7 +55,6 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
   String? _error;
   bool _fromCache = false;
   bool _filesExpanded = false;
-  bool _showInspector = true;
 
   String get _cacheKey => AnalysisCache.keyFor(
     widget.repository.owner,
@@ -78,16 +74,29 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
       // another forty seconds and two model calls on the same answer.
       _analysis = cached;
       _fromCache = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _emitSession();
+      });
       return;
     }
 
     _start();
   }
 
+  void _emitSession() {
+    final onUpdate = widget.onSessionUpdate;
+    if (onUpdate == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      onUpdate(_analysis, _error, _fromCache);
+    });
+  }
+
   /// Discard the cached result and analyse again from scratch.
   Future<void> _reanalyze() async {
     widget.cache.invalidate(_cacheKey);
     setState(() => _fromCache = false);
+    _emitSession();
     await _start();
   }
 
@@ -102,6 +111,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
       _analysis = null;
       _error = null;
     });
+    _emitSession();
 
     await _subscription?.cancel();
 
@@ -115,6 +125,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
 
       if (!mounted) return;
       setState(() => _analysis = created);
+      _emitSession();
 
       _subscription = widget.api
           .watchAnalysis(created.id)
@@ -123,14 +134,18 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
               if (!mounted) return;
               setState(() => _analysis = analysis);
               widget.cache.save(_cacheKey, analysis);
+              _emitSession();
             },
             onError: (Object e) {
-              if (mounted) setState(() => _error = e.toString());
+              if (!mounted) return;
+              setState(() => _error = e.toString());
+              _emitSession();
             },
           );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
+      _emitSession();
     }
   }
 
@@ -179,175 +194,133 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
   Widget build(BuildContext context) {
     final analysis = _analysis;
 
-    return RepairShell(
-      header: RepairHeader(
-        repositoryFullName: widget.repository.fullName,
-        branch: _headerBranch,
-        commitSha: _headerCommitSha,
-        statusLabel: _headerStatusLabel,
-        statusColor: _headerStatusColor,
-        isInspectorVisible: _showInspector,
-        onToggleInspector: () {
-          setState(() => _showInspector = !_showInspector);
-        },
-      ),
-      workflow: const RepairWorkflow(
-        currentStage: RepairStage.diagnosis,
-        completedStages: {RepairStage.issue},
-      ),
-      content: PageBody(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildIssueHeader(),
-            const SizedBox(height: 20),
-            if (_error != null)
-              ErrorNotice(message: _error!, onRetry: _start)
-            else if (analysis == null)
-              const StatusBanner(
-                status: AnalysisStatus.queued,
-                label: 'Starting analysis',
-              )
-            else ...[
-              StatusBanner(
-                status: analysis.status,
-                label: analysis.status == AnalysisStatus.failed
-                    ? (analysis.error ?? 'Analysis failed')
-                    : _fromCache
-                    ? 'Showing the result from earlier in this '
-                          'session'
-                    : analysis.stageLabel,
-                onRetry: analysis.status == AnalysisStatus.failed
-                    ? _start
-                    : null,
-                onReanalyze: analysis.status == AnalysisStatus.completed
-                    ? _reanalyze
-                    : null,
-              ),
-              if (analysis.signals.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                const SectionTitle('Signals'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: analysis.signals
-                      .map(
-                        (signal) => StatusChip(
-                          label: signal.term,
-                          color: AppTheme.signalColor(signal.type),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-              if (analysis.diagnosis != null) ...[
-                const SizedBox(height: 28),
-                RootCauseSection(
-                  diagnosis: analysis.diagnosis!,
-                  onViewRootCause: (path, line) => _openFile(path, line: line),
-                ),
-              ] else if (analysis.diagnosisError != null &&
-                  analysis.status == AnalysisStatus.completed) ...[
-                const SizedBox(height: 28),
-                const SectionTitle('Root cause'),
-                ErrorNotice(message: analysis.diagnosisError!),
-              ],
-              if (analysis.relevantFiles.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                RelevantFilesSection(
-                  files: analysis.relevantFiles,
-                  visibleFiles: _visibleFiles(analysis),
-                  isExpanded: _filesExpanded,
-                  onExpandedChanged: (expanded) =>
-                      setState(() => _filesExpanded = expanded),
-                  onOpen: _openRelevantFile,
-                  citedFilePaths: {...?analysis.diagnosis?.citedFiles},
-                  totalSignalCount: analysis.signals.length,
-                ),
-              ],
-              if (analysis.diagnosis != null) ...[
-                const SizedBox(height: 28),
-                ExplanationSection(diagnosis: analysis.diagnosis!),
-                const SizedBox(height: 28),
-                const SectionTitle('Suggested fix'),
-                Panel(
-                  background: AppTheme.success.withValues(alpha: 0.06),
-                  borderColor: AppTheme.success.withValues(alpha: 0.35),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.build_outlined,
-                            size: 20,
-                            color: AppTheme.success,
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: SelectableText(
-                              analysis.diagnosis!.suggestedFix,
-                              style: const TextStyle(fontSize: 15, height: 1.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (analysis.diagnosis!.citedFiles.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        const Divider(height: 1, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: analysis.diagnosis!.citedFiles
-                              .map(
-                                (path) => OpenFileButton(
-                                  path: path,
-                                  onTap: () => _openFile(path),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1040),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildIssueHeader(),
+              const SizedBox(height: 22),
+              if (_error != null)
+                ErrorNotice(message: _error!, onRetry: _start)
+              else if (analysis == null ||
+                  analysis.status == AnalysisStatus.queued ||
+                  analysis.status == AnalysisStatus.running)
+                const _DiagnosisSkeleton()
+              else ...[
+                if (analysis.status == AnalysisStatus.completed ||
+                    analysis.status == AnalysisStatus.failed)
+                  StatusBanner(
+                    status: analysis.status,
+                    label: analysis.status == AnalysisStatus.failed
+                        ? (analysis.error ?? 'Analysis failed')
+                        : _fromCache
+                        ? 'Showing the result from earlier in this '
+                              'session'
+                        : analysis.stageLabel,
+                    onRetry: analysis.status == AnalysisStatus.failed
+                        ? _start
+                        : null,
+                    onReanalyze: analysis.status == AnalysisStatus.completed
+                        ? _reanalyze
+                        : null,
                   ),
-                ),
+                // 1–2. Root cause + defect location. First content block —
+                // this is what the user should read before anything else.
+                if (analysis.diagnosis != null) ...[
+                  const _SectionBreak(strong: true),
+                  RootCauseSection(
+                    diagnosis: analysis.diagnosis!,
+                    onViewRootCause: (path, line) =>
+                        _openFile(path, line: line),
+                  ),
+                ] else if (analysis.diagnosisError != null &&
+                    analysis.status == AnalysisStatus.completed) ...[
+                  const _SectionBreak(strong: true),
+                  Text('ROOT CAUSE', style: AppTypography.sectionLabel),
+                  const SizedBox(height: 12),
+                  ErrorNotice(message: analysis.diagnosisError!),
+                ],
+
+                // 3. Why the diagnosis believes this is the root cause.
+                if (analysis.diagnosis != null) ...[
+                  const _SectionBreak(),
+                  ExplanationSection(diagnosis: analysis.diagnosis!),
+                ],
+
+                // 4. Relevant files and symbols.
+                if (analysis.relevantFiles.isNotEmpty) ...[
+                  const _SectionBreak(),
+                  RelevantFilesSection(
+                    files: analysis.relevantFiles,
+                    visibleFiles: _visibleFiles(analysis),
+                    isExpanded: _filesExpanded,
+                    onExpandedChanged: (expanded) =>
+                        setState(() => _filesExpanded = expanded),
+                    onOpen: _openRelevantFile,
+                    citedFilePaths: {...?analysis.diagnosis?.citedFiles},
+                    totalSignalCount: analysis.signals.length,
+                  ),
+                ],
+
+                // 5. Supporting evidence — matched signal terms. Kept
+                // deliberately quiet: markers, not badges.
+                if (analysis.signals.isNotEmpty) ...[
+                  const _SectionBreak(),
+                  Text('SIGNALS', style: AppTypography.sectionLabel),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 10,
+                    children: analysis.signals
+                        .map(
+                          (signal) => _SignalMarker(
+                            label: signal.term,
+                            color: AppTheme.signalColor(signal.type),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+
+                // 6. Suggested fix — the conclusion of the investigation.
+                if (analysis.diagnosis != null) ...[
+                  const _SectionBreak(),
+                  Text('SUGGESTED FIX', style: AppTypography.sectionLabel),
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    analysis.diagnosis!.suggestedFix,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.55,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  if (analysis.diagnosis!.citedFiles.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: analysis.diagnosis!.citedFiles
+                          .map(
+                            (path) => OpenFileButton(
+                              path: path,
+                              onTap: () => _openFile(path),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ],
               ],
-              if (analysis.status == AnalysisStatus.completed &&
-                  analysis.diagnosis != null) ...[
-                const SizedBox(height: 28),
-                PatchPanel(
-                  api: widget.api,
-                  analysisId: analysis.id,
-                  commitSha: analysis.commitSha,
-                  requestedRef: widget.ref,
-                  onOpenFile: (path, {int? line, String? reason}) =>
-                      _openFile(path, line: line, reason: reason),
-                ),
-                const SizedBox(height: 28),
-                FollowUpPanel(api: widget.api, analysisId: analysis.id),
-              ],
+              const SizedBox(height: 48),
             ],
-            const SizedBox(height: 48),
-          ],
+          ),
         ),
-      ),
-      inspector: RepairInspector(
-        title: 'Inspector',
-        onClose: () => setState(() => _showInspector = false),
-        child: const Text(
-          'Evidence will appear here',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 12.5),
-        ),
-      ),
-      showInspector: _showInspector,
-      statusBar: RepairStatusBar(
-        statusLabel: _statusBarLabel,
-        supportingText: _statusBarSupportingText,
-        statusIcon: _statusBarIcon,
-        tone: _statusBarTone,
-        isLoading: _statusBarLoading,
       ),
     );
   }
@@ -360,122 +333,14 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
     return null;
   }
 
-  String get _headerBranch {
-    final requested = widget.ref?.trim();
-    if (requested != null && requested.isNotEmpty) return requested;
-    final resolved = _analysis?.ref?.trim();
-    if (resolved != null && resolved.isNotEmpty) return resolved;
-    return 'HEAD';
-  }
-
-  String get _headerCommitSha => (_analysis?.commitSha ?? '').trim();
-
-  String get _headerStatusLabel {
-    if (_error != null &&
-        (_analysis == null || _analysis!.status == AnalysisStatus.failed)) {
-      return 'Analysis failed';
-    }
-    final analysis = _analysis;
-    if (analysis == null) return 'Starting analysis';
-    switch (analysis.status) {
-      case AnalysisStatus.queued:
-      case AnalysisStatus.running:
-        return 'Analyzing';
-      case AnalysisStatus.completed:
-        return 'Analysis complete';
-      case AnalysisStatus.failed:
-        return 'Analysis failed';
-    }
-  }
-
-  Color get _headerStatusColor {
-    if (_error != null && _analysis == null) return AppTheme.danger;
-    final analysis = _analysis;
-    if (analysis == null) return AppTheme.accent;
-    switch (analysis.status) {
-      case AnalysisStatus.queued:
-      case AnalysisStatus.running:
-        return AppTheme.accent;
-      case AnalysisStatus.completed:
-        return AppTheme.success;
-      case AnalysisStatus.failed:
-        return AppTheme.danger;
-    }
-  }
-
-  String get _statusBarLabel {
-    if (_error != null && _analysis == null) return 'Analysis failed';
-    final analysis = _analysis;
-    if (analysis == null) return 'Starting analysis';
-    switch (analysis.status) {
-      case AnalysisStatus.queued:
-      case AnalysisStatus.running:
-        return analysis.stageLabel;
-      case AnalysisStatus.completed:
-        return 'Analysis complete';
-      case AnalysisStatus.failed:
-        return 'Analysis failed';
-    }
-  }
-
-  String? get _statusBarSupportingText {
-    if (_error != null && _analysis == null) return _error;
-    final analysis = _analysis;
-    if (analysis == null) return null;
-    if (analysis.status == AnalysisStatus.failed) {
-      return analysis.error;
-    }
-    if (analysis.status == AnalysisStatus.completed && _fromCache) {
-      return 'Showing the result from earlier in this session';
-    }
-    return null;
-  }
-
-  RepairStatusTone get _statusBarTone {
-    if (_error != null && _analysis == null) return RepairStatusTone.danger;
-    final analysis = _analysis;
-    if (analysis == null) return RepairStatusTone.accent;
-    switch (analysis.status) {
-      case AnalysisStatus.queued:
-      case AnalysisStatus.running:
-        return RepairStatusTone.accent;
-      case AnalysisStatus.completed:
-        return RepairStatusTone.success;
-      case AnalysisStatus.failed:
-        return RepairStatusTone.danger;
-    }
-  }
-
-  bool get _statusBarLoading {
-    if (_error != null) return false;
-    final analysis = _analysis;
-    if (analysis == null) return true;
-    return analysis.status == AnalysisStatus.queued ||
-        analysis.status == AnalysisStatus.running;
-  }
-
-  IconData? get _statusBarIcon {
-    if (_statusBarLoading) return null;
-    if (_error != null && _analysis == null) return Icons.error_outline;
-    final analysis = _analysis;
-    if (analysis == null) return null;
-    switch (analysis.status) {
-      case AnalysisStatus.completed:
-        return Icons.check_circle_outline;
-      case AnalysisStatus.failed:
-        return Icons.error_outline;
-      case AnalysisStatus.queued:
-      case AnalysisStatus.running:
-        return null;
-    }
-  }
-
   static String _shortSha(String value) {
     if (value.length <= 12) return value;
     return value.substring(0, 12);
   }
 
   Widget _buildIssueHeader() {
+    final commit = _analyzedCommit;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -485,64 +350,54 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
           tooltip: 'Back to issues',
           color: AppTheme.textMuted,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    '#${widget.issue.number}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontFamily: AppTheme.mono,
-                      color: AppTheme.textMuted,
-                    ),
+              // Compact metadata line — everything the eye can skip
+              // past once it has registered the issue is worth reading.
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontFamily: AppTheme.mono,
+                    color: AppTheme.textMuted,
+                    letterSpacing: 0.2,
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    widget.repository.fullName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-              if (_analyzedCommit != null) ...[
-                const SizedBox(height: 6),
-                Tooltip(
-                  message: _analyzedCommit!,
-                  child: Text(
-                    'Analyzed at ${_shortSha(_analyzedCommit!)}',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontFamily: AppTheme.mono,
-                      color: AppTheme.purple,
-                    ),
-                  ),
+                  children: [
+                    const TextSpan(text: 'ISSUE #'),
+                    TextSpan(text: '${widget.issue.number}'),
+                    const TextSpan(text: '  ·  '),
+                    TextSpan(text: widget.repository.fullName),
+                    if (commit != null) ...[
+                      const TextSpan(text: '  ·  '),
+                      TextSpan(text: _shortSha(commit)),
+                    ],
+                  ],
                 ),
-              ],
-              const SizedBox(height: 8),
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
               Text(
                 widget.issue.title,
                 style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  height: 1.3,
-                  letterSpacing: -0.4,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                  letterSpacing: -0.1,
+                  color: AppTheme.text,
                 ),
               ),
               if (widget.issue.body.trim().isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 ExpandableText(
                   text: widget.issue.body.trim(),
                   maxLines: _previewLimit,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12.5,
                     color: AppTheme.textMuted,
-                    height: 1.6,
+                    height: 1.5,
                   ),
                 ),
               ],
@@ -550,6 +405,238 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One hairline rule with the shared before/after rhythm used to
+/// separate every section on the diagnosis screen. [strong] marks the
+/// single rule that introduces Root Cause — everything after it steps
+/// down to the quieter divider color.
+class _SectionBreak extends StatelessWidget {
+  const _SectionBreak({this.strong = false});
+
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 28, bottom: 20),
+      child: Divider(
+        height: 1,
+        color: strong ? AppTheme.border : AppTheme.borderSubtle,
+      ),
+    );
+  }
+}
+
+/// A single piece of supporting evidence — a dot and a term, nothing
+/// more. Deliberately subordinate to everything above it.
+class _SignalMarker extends StatelessWidget {
+  const _SignalMarker({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontFamily: AppTheme.mono,
+            color: AppTheme.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DiagnosisSkeleton extends StatelessWidget {
+  const _DiagnosisSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SkeletonRootCause(),
+        _SkeletonRule(),
+        _SkeletonProse(lines: [1.0, 0.92, 0.58]),
+        _SkeletonRule(),
+        _SkeletonFiles(),
+        _SkeletonRule(),
+        _SkeletonSignals(),
+        _SkeletonRule(),
+        _SkeletonProse(lines: [0.86, 0.64]),
+      ],
+    );
+  }
+}
+
+class _SkeletonRule extends StatelessWidget {
+  const _SkeletonRule();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Divider(height: 1, color: AppTheme.border.withValues(alpha: 0.55)),
+    );
+  }
+}
+
+class _SkeletonSignals extends StatelessWidget {
+  const _SkeletonSignals();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SkeletonLabel(),
+        SizedBox(height: 12),
+        Wrap(
+          spacing: 18,
+          runSpacing: 10,
+          children: [
+            _SkeletonBar(width: 60, height: 8),
+            _SkeletonBar(width: 76, height: 8),
+            _SkeletonBar(width: 52, height: 8),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonRootCause extends StatelessWidget {
+  const _SkeletonRootCause();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SkeletonLabel(),
+        SizedBox(height: 16),
+        _SkeletonBar(width: 460, height: 16),
+        SizedBox(height: 12),
+        _SkeletonBar(height: 10),
+        SizedBox(height: 8),
+        _SkeletonBar(width: 280, height: 10),
+        SizedBox(height: 20),
+        _SkeletonBar(width: 220, height: 10),
+      ],
+    );
+  }
+}
+
+class _SkeletonFiles extends StatelessWidget {
+  const _SkeletonFiles();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SkeletonLabel(),
+        SizedBox(height: 8),
+        _SkeletonFileRow(),
+        _SkeletonFileRow(),
+        _SkeletonFileRow(),
+        _SkeletonFileRow(),
+      ],
+    );
+  }
+}
+
+class _SkeletonFileRow extends StatelessWidget {
+  const _SkeletonFileRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          _SkeletonBar(width: 22, height: 8),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SkeletonBar(width: 168, height: 10),
+                SizedBox(height: 6),
+                _SkeletonBar(width: 240, height: 8),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonProse extends StatelessWidget {
+  const _SkeletonProse({required this.lines});
+
+  final List<double> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SkeletonLabel(),
+        const SizedBox(height: 12),
+        for (var i = 0; i < lines.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          FractionallySizedBox(
+            widthFactor: lines[i],
+            alignment: Alignment.centerLeft,
+            child: const _SkeletonBar(height: 10),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SkeletonLabel extends StatelessWidget {
+  const _SkeletonLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _SkeletonBar(width: 86, height: 8);
+  }
+}
+
+class _SkeletonBar extends StatelessWidget {
+  const _SkeletonBar({this.width, this.height = 8});
+
+  final double? width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppTheme.border.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(2),
+      ),
     );
   }
 }

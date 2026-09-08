@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/context_package.dart';
 import '../models/models.dart';
 import 'api_http.dart';
 import 'key_value_store.dart';
@@ -41,8 +42,8 @@ class ApiClient {
   final KeyValueStore _tokens;
 
   ApiClient({http.Client? client, KeyValueStore? tokens})
-      : _http = client ?? createApiHttpClient(),
-        _tokens = tokens ?? KeyValueStore();
+    : _http = client ?? createApiHttpClient(),
+      _tokens = tokens ?? KeyValueStore();
 
   void storeSessionToken(String sessionId) {
     _tokens.write(sessionStorageKey, sessionId);
@@ -256,12 +257,20 @@ class ApiClient {
     return FileSource.fromJson(json as Map<String, dynamic>);
   }
 
+  /// Bounded context for a completed analysis.
+  ///
+  /// Served from GET /analyses/{id}/context — slice content is kept off
+  /// the polling Analysis payload.
+  Future<ContextPackage> getContextPackage(String analysisId) async {
+    final json = await _get('/api/analyses/$analysisId/context', null);
+    return ContextPackage.fromJson(json as Map<String, dynamic>);
+  }
+
   /// Ask one question about a completed analysis.
   Future<Answer> askQuestion(String id, String question) async {
-    final json = await _post(
-      '/api/analyses/$id/questions',
-      {'question': question},
-    );
+    final json = await _post('/api/analyses/$id/questions', {
+      'question': question,
+    });
     return Answer.fromJson(json as Map<String, dynamic>);
   }
 
@@ -278,11 +287,7 @@ class ApiClient {
     final interval = pollInterval ?? _patchPollInterval;
 
     try {
-      final json = await _post(
-        '/api/analyses/$id/patch',
-        {},
-        timeout: wait,
-      );
+      final json = await _post('/api/analyses/$id/patch', {}, timeout: wait);
       return PatchProposal.fromJson(json as Map<String, dynamic>);
     } on ApiException catch (e) {
       if (e.statusCode == 409 || _isTimeout(e) || _isUnreachable(e)) {
@@ -351,10 +356,21 @@ class ApiClient {
     return PatchApproval.fromJson(json as Map<String, dynamic>);
   }
 
-  Future<PatchDelivery> deliverPatch(String id) async {
+  Future<PatchDelivery> deliverPatch(
+    String id, {
+    String? title,
+    String? description,
+  }) async {
+    final body = <String, dynamic>{};
+    final trimmedTitle = title?.trim() ?? '';
+    final trimmedDescription = description?.trim() ?? '';
+    if (trimmedTitle.isNotEmpty) body['title'] = trimmedTitle;
+    if (trimmedDescription.isNotEmpty) {
+      body['description'] = trimmedDescription;
+    }
     final json = await _post(
       '/api/analyses/$id/patch/deliver',
-      {},
+      body,
       timeout: const Duration(seconds: 180),
     );
     return PatchDelivery.fromJson(json as Map<String, dynamic>);
@@ -374,11 +390,12 @@ class ApiClient {
     Map<String, String>? query, {
     Duration? timeout,
   }) {
-    final uri = Uri.parse('$baseUrl$path').replace(
-      queryParameters: query,
-    );
+    final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
 
-    return _send(() => _http.get(uri, headers: _authHeaders()), timeout: timeout);
+    return _send(
+      () => _http.get(uri, headers: _authHeaders()),
+      timeout: timeout,
+    );
   }
 
   Future<dynamic> _post(
@@ -387,16 +404,12 @@ class ApiClient {
     Duration? timeout,
     Map<String, String>? query,
   }) {
-    final uri = Uri.parse('$baseUrl$path').replace(
-      queryParameters: query,
-    );
+    final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
 
     return _send(
       () => _http.post(
         uri,
-        headers: _authHeaders({
-          'Content-Type': 'application/json',
-        }),
+        headers: _authHeaders({'Content-Type': 'application/json'}),
         body: jsonEncode(body),
       ),
       timeout: timeout,
