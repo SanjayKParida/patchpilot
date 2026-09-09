@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'pull_request_models.dart';
 
@@ -54,12 +56,19 @@ class PullRequestStatusIndicator extends StatelessWidget {
 
 class PullRequestSectionLabel extends StatelessWidget {
   final String text;
+  final String? info;
 
-  const PullRequestSectionLabel(this.text, {super.key});
+  const PullRequestSectionLabel(this.text, {super.key, this.info});
 
   @override
   Widget build(BuildContext context) {
-    return Text(text.toUpperCase(), style: AppTypography.sectionLabel);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text.toUpperCase(), style: AppTypography.sectionLabel),
+        if (info != null) SectionInfoButton(message: info!),
+      ],
+    );
   }
 }
 
@@ -212,7 +221,10 @@ class PullRequestPrerequisites extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PullRequestSectionLabel('Prerequisites'),
+        const PullRequestSectionLabel(
+          'Prerequisites',
+          info: RepairSectionHelp.prerequisites,
+        ),
         const SizedBox(height: 10),
         _item(
           'Validation',

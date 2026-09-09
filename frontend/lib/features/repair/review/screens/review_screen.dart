@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'review_models.dart';
 import 'review_widgets.dart';
@@ -64,6 +65,7 @@ class _WaitingView extends StatelessWidget {
       children: [
         _PageHeader(
           title: 'Review',
+          info: RepairSectionHelp.review,
           subtitle:
               'Review becomes available after the generated patch passes validation.',
         ),
@@ -123,6 +125,7 @@ class _ReadyForReviewView extends StatelessWidget {
       children: [
         const _PageHeader(
           title: 'Review',
+          info: RepairSectionHelp.review,
           status: ReviewStatusIndicator(status: ReviewStatus.ready),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -171,6 +174,7 @@ class _ApprovedView extends StatelessWidget {
       children: [
         const _PageHeader(
           title: 'Review',
+          info: RepairSectionHelp.review,
           subtitle: 'This patch has been approved.',
           status: ReviewStatusIndicator(status: ReviewStatus.approved),
         ),
@@ -207,6 +211,7 @@ class _ChangesRequestedView extends StatelessWidget {
       children: [
         const _PageHeader(
           title: 'Review',
+          info: RepairSectionHelp.review,
           subtitle: 'Changes have been requested for this patch.',
           status: ReviewStatusIndicator(status: ReviewStatus.changesRequested),
         ),
@@ -232,8 +237,14 @@ class _PageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget? status;
+  final String? info;
 
-  const _PageHeader({required this.title, this.subtitle, this.status});
+  const _PageHeader({
+    required this.title,
+    this.subtitle,
+    this.status,
+    this.info,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -244,14 +255,19 @@ class _PageHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppTheme.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppTheme.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  if (info != null) SectionInfoButton(message: info!),
+                ],
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 6),

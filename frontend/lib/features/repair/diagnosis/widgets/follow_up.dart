@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
@@ -63,6 +64,7 @@ class _FollowUpPanelState extends State<FollowUpPanel> {
         const SectionTitle(
           'Ask a follow-up',
           trailing: 'answered from this analysis only',
+          info: RepairSectionHelp.followUp,
         ),
         Panel(
           child: Column(

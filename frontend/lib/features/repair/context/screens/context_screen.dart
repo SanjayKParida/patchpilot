@@ -8,7 +8,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_workflow.dart';
 import 'package:patchpilot_web/models/context_package.dart';
 import 'package:patchpilot_web/models/models.dart';
@@ -187,14 +189,21 @@ class _ContextLoaded extends StatelessWidget {
                     ContextWarningBanner(warnings: package.warnings),
                     const SizedBox(height: 20),
                   ],
-                  const Text(
-                    'SELECTED CONTEXT',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
-                      color: AppTheme.textMuted,
-                    ),
+                  const Row(
+                    children: [
+                      Text(
+                        'SELECTED CONTEXT',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      SectionInfoButton(
+                        message: RepairSectionHelp.selectedContext,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -273,6 +282,7 @@ class _ContextHeader extends StatelessWidget {
                       color: AppTheme.textMuted,
                     ),
                   ),
+                  const SectionInfoButton(message: RepairSectionHelp.context),
                   if (metaParts.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(

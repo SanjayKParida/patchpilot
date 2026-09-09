@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/common.dart';
 import '../../../../models/models.dart';
+import '../../shell/repair_section_help.dart';
 
 class RelevantFilesSection extends StatelessWidget {
   const RelevantFilesSection({
@@ -34,6 +36,7 @@ class RelevantFilesSection extends StatelessWidget {
         Row(
           children: [
             Text('RELEVANT FILES', style: AppTypography.sectionLabel),
+            const SectionInfoButton(message: RepairSectionHelp.relevantFiles),
             const Spacer(),
             Text('${files.length}', style: AppTypography.caption),
           ],

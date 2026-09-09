@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/common.dart';
 import '../../../../models/models.dart';
+import '../../shell/repair_section_help.dart';
 import 'symbol_button.dart';
 
 class RootCauseSection extends StatelessWidget {
@@ -47,6 +49,7 @@ class RootCauseSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text('ROOT CAUSE', style: AppTypography.sectionLabel),
+            const SectionInfoButton(message: RepairSectionHelp.rootCause),
             const Spacer(),
             _ConfidenceBadge(
               label: diagnosis.confidencePercent,

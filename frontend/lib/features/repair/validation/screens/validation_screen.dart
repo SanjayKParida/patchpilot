@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
@@ -238,14 +239,19 @@ class _Header extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Expanded(
-              child: Text(
-                'Validation',
-                style: TextStyle(
-                  color: AppTheme.text,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    'Validation',
+                    style: TextStyle(
+                      color: AppTheme.text,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  SectionInfoButton(message: RepairSectionHelp.validation),
+                ],
               ),
             ),
             // The primary-action slot: a real button when one applies,
@@ -338,7 +344,8 @@ class _MainContent extends StatelessWidget {
       return const ValidationRunningNotice();
     }
 
-    final isFinal = status == ValidationStatus.passed ||
+    final isFinal =
+        status == ValidationStatus.passed ||
         status == ValidationStatus.failed ||
         status == ValidationStatus.unavailable;
 

@@ -10,6 +10,7 @@ import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
+import '../../shell/repair_section_help.dart';
 import '../widgets/explanation_section.dart';
 import '../widgets/open_file_button.dart';
 import '../widgets/relevant_files_section.dart';
@@ -241,7 +242,12 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
                 ] else if (analysis.diagnosisError != null &&
                     analysis.status == AnalysisStatus.completed) ...[
                   const _SectionBreak(strong: true),
-                  Text('ROOT CAUSE', style: AppTypography.sectionLabel),
+                  const Row(
+                    children: [
+                      Text('ROOT CAUSE', style: AppTypography.sectionLabel),
+                      SectionInfoButton(message: RepairSectionHelp.rootCause),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   ErrorNotice(message: analysis.diagnosisError!),
                 ],
@@ -271,7 +277,12 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
                 // deliberately quiet: markers, not badges.
                 if (analysis.signals.isNotEmpty) ...[
                   const _SectionBreak(),
-                  Text('SIGNALS', style: AppTypography.sectionLabel),
+                  const Row(
+                    children: [
+                      Text('SIGNALS', style: AppTypography.sectionLabel),
+                      SectionInfoButton(message: RepairSectionHelp.signals),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 16,
@@ -290,7 +301,14 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
                 // 6. Suggested fix — the conclusion of the investigation.
                 if (analysis.diagnosis != null) ...[
                   const _SectionBreak(),
-                  Text('SUGGESTED FIX', style: AppTypography.sectionLabel),
+                  const Row(
+                    children: [
+                      Text('SUGGESTED FIX', style: AppTypography.sectionLabel),
+                      SectionInfoButton(
+                        message: RepairSectionHelp.suggestedFix,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   SelectableText(
                     analysis.diagnosis!.suggestedFix,

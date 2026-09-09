@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/common.dart';
 import '../../../../models/models.dart';
+import '../../shell/repair_section_help.dart';
 
 /// Supporting explanation section for PatchPilot's Diagnosis stage.
 ///
@@ -27,7 +29,12 @@ class ExplanationSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('EXPLANATION', style: AppTypography.sectionLabel),
+        const Row(
+          children: [
+            Text('EXPLANATION', style: AppTypography.sectionLabel),
+            SectionInfoButton(message: RepairSectionHelp.explanation),
+          ],
+        ),
         const SizedBox(height: 12),
         Text(
           diagnosis.explanation,

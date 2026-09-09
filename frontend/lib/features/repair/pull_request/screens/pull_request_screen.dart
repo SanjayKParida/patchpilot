@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'pull_request_models.dart';
 import 'pull_request_widgets.dart';
@@ -113,6 +114,7 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
                 color: AppTheme.text,
               ),
             ),
+            const SectionInfoButton(message: RepairSectionHelp.pullRequest),
             const Spacer(),
             PullRequestStatusIndicator(status: state.status),
           ],
@@ -166,7 +168,10 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
 
         const SizedBox(height: 28),
 
-        const PullRequestSectionLabel('Change summary'),
+        const PullRequestSectionLabel(
+          'Change summary',
+          info: RepairSectionHelp.changeSummary,
+        ),
         const SizedBox(height: 12),
 
         PullRequestMetadata(

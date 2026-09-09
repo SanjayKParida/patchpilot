@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'validation_models.dart';
 
@@ -36,9 +37,10 @@ class _ValidationPulseDotState extends State<ValidationPulseDot>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: Tween<double>(begin: 0.3, end: 1).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-      ),
+      opacity: Tween<double>(
+        begin: 0.3,
+        end: 1,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
       child: Container(
         width: widget.size,
         height: widget.size,
@@ -108,7 +110,10 @@ class ValidationStatusIcon extends StatelessWidget {
           width: size,
           height: size,
           child: Center(
-            child: ValidationPulseDot(size: size * 0.45, color: AppTheme.accent),
+            child: ValidationPulseDot(
+              size: size * 0.45,
+              color: AppTheme.accent,
+            ),
           ),
         );
 
@@ -149,7 +154,10 @@ class CheckStatusIcon extends StatelessWidget {
           width: size,
           height: size,
           child: Center(
-            child: ValidationPulseDot(size: size * 0.45, color: AppTheme.accent),
+            child: ValidationPulseDot(
+              size: size * 0.45,
+              color: AppTheme.accent,
+            ),
           ),
         );
 
@@ -247,8 +255,7 @@ class _ValidationCheckTileState extends State<ValidationCheckTile> {
                     ),
                   ),
                 ],
-                if (check.error != null &&
-                    check.error!.trim().isNotEmpty) ...[
+                if (check.error != null && check.error!.trim().isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     check.error!,
@@ -268,9 +275,7 @@ class _ValidationCheckTileState extends State<ValidationCheckTile> {
           if (canExpand) ...[
             const SizedBox(width: 12),
             Icon(
-              _expanded
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down,
+              _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 18,
               color: AppTheme.textMuted,
             ),
@@ -449,7 +454,11 @@ class ValidationChecksHeader extends StatelessWidget {
       trailing = '${state.passedChecks}/${state.checks.length} passed';
     }
 
-    return SectionTitle('Validation checks', trailing: trailing);
+    return SectionTitle(
+      'Validation checks',
+      trailing: trailing,
+      info: RepairSectionHelp.validationChecks,
+    );
   }
 }
 

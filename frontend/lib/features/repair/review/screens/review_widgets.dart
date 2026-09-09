@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'review_models.dart';
 
@@ -57,12 +59,19 @@ class ReviewStatusIndicator extends StatelessWidget {
 
 class ReviewSectionLabel extends StatelessWidget {
   final String label;
+  final String? info;
 
-  const ReviewSectionLabel({super.key, required this.label});
+  const ReviewSectionLabel({super.key, required this.label, this.info});
 
   @override
   Widget build(BuildContext context) {
-    return Text(label.toUpperCase(), style: AppTypography.sectionLabel);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label.toUpperCase(), style: AppTypography.sectionLabel),
+        if (info != null) SectionInfoButton(message: info!),
+      ],
+    );
   }
 }
 
@@ -81,7 +90,10 @@ class ReviewSummarySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ReviewSectionLabel(label: 'What changed'),
+        const ReviewSectionLabel(
+          label: 'What changed',
+          info: RepairSectionHelp.whatChanged,
+        ),
         const SizedBox(height: 14),
         if (rootCause.trim().isNotEmpty) ...[
           const Text(
@@ -160,7 +172,10 @@ class ChangedFilesSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const ReviewSectionLabel(label: 'Changed files'),
+            const ReviewSectionLabel(
+              label: 'Changed files',
+              info: RepairSectionHelp.changedFiles,
+            ),
             const Spacer(),
             Text(
               '${files.length} ${files.length == 1 ? 'file' : 'files'}',
@@ -317,7 +332,10 @@ class ValidationResultSection extends StatelessWidget {
       return const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ReviewSectionLabel(label: 'Validation'),
+          ReviewSectionLabel(
+            label: 'Validation',
+            info: RepairSectionHelp.reviewValidation,
+          ),
           SizedBox(height: 12),
           Text(
             'Validation result is not available yet.',
@@ -332,7 +350,10 @@ class ValidationResultSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ReviewSectionLabel(label: 'Validation'),
+        const ReviewSectionLabel(
+          label: 'Validation',
+          info: RepairSectionHelp.reviewValidation,
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -401,7 +422,10 @@ class ReviewNotesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ReviewSectionLabel(label: 'Notes & limitations'),
+        const ReviewSectionLabel(
+          label: 'Notes & limitations',
+          info: RepairSectionHelp.notes,
+        ),
         const SizedBox(height: 12),
         for (final note in notes)
           Padding(

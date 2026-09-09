@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/syntax_highlighter.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 
@@ -366,30 +367,39 @@ class _PatchPanelState extends State<PatchPanel> {
       children: [
         Icon(Icons.difference_outlined, size: 16, color: AppTheme.stagePatch),
         const SizedBox(width: 8),
-        Text(
-          'Proposed patch',
-          style: AppTypography.title.copyWith(fontSize: 14),
-        ),
-        if (commit != null) ...[
-          const SizedBox(width: 10),
-          const Text(
-            '·',
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-          ),
-          const SizedBox(width: 10),
-          Tooltip(
-            message: commit,
-            child: Text(
-              'Patching ${_shortSha(commit)}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontFamily: AppTheme.mono,
-                color: AppTheme.textMuted,
+        Flexible(
+          child: Row(
+            children: [
+              Text(
+                'Proposed patch',
+                style: AppTypography.title.copyWith(fontSize: 14),
               ),
-            ),
+              const SectionInfoButton(message: RepairSectionHelp.proposedPatch),
+              if (commit != null) ...[
+                const SizedBox(width: 10),
+                const Text(
+                  '·',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Tooltip(
+                    message: commit,
+                    child: Text(
+                      'Patching ${_shortSha(commit)}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: AppTheme.mono,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-        const Spacer(),
+        ),
         if (_proposal == null && !_loadingCached && !_loadingPatch)
           FilledButton(
             onPressed: _generate,
@@ -923,14 +933,19 @@ class _ValidationSection extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          const Text(
-            'VALIDATION STEPS',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              color: AppTheme.textMuted,
-            ),
+          const Row(
+            children: [
+              Text(
+                'VALIDATION STEPS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              SectionInfoButton(message: RepairSectionHelp.validationSteps),
+            ],
           ),
           const SizedBox(height: 8),
           _stepRow(

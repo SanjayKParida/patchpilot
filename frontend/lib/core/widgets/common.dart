@@ -97,25 +97,70 @@ class Panel extends StatelessWidget {
   }
 }
 
-class SectionTitle extends StatelessWidget {
-  final String title;
-  final String? trailing;
+/// Compact heading info control. Visual icon is 14px; the tap target
+/// is 32px so the control is easy to hit without a dialog.
+class SectionInfoButton extends StatelessWidget {
+  final String message;
 
-  const SectionTitle(this.title, {super.key, this.trailing});
+  const SectionInfoButton({super.key, required this.message});
+
+  static const double _iconSize = 14;
+  static const double _hitSize = 32;
 
   @override
   Widget build(BuildContext context) {
+    return Semantics(
+      label: 'More information',
+      button: true,
+      child: Tooltip(
+        message: message,
+        triggerMode: TooltipTriggerMode.tap,
+        child: SizedBox(
+          width: _hitSize,
+          height: _hitSize,
+          child: const Center(
+            child: Icon(
+              Icons.info_outline,
+              size: _iconSize,
+              color: AppTheme.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SectionTitle extends StatelessWidget {
+  final String title;
+  final String? trailing;
+  final String? info;
+
+  const SectionTitle(this.title, {super.key, this.trailing, this.info});
+
+  @override
+  Widget build(BuildContext context) {
+    final titleText = Text(
+      title.toUpperCase(),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+      style: AppTypography.sectionLabel,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
           Flexible(
-            child: Text(
-              title.toUpperCase(),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: AppTypography.sectionLabel,
-            ),
+            child: info == null
+                ? titleText
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(child: titleText),
+                      SectionInfoButton(message: info!),
+                    ],
+                  ),
           ),
           if (trailing != null) ...[
             const SizedBox(width: AppSpacing.sm),
