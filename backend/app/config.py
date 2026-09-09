@@ -17,13 +17,11 @@ load_dotenv()
 
 SESSION_COOKIE_NAME = "patchpilot_session"
 
-
 def _env(name, default=None):
     value = os.getenv(name)
     if value is None or not str(value).strip():
         return default
     return value.strip()
-
 
 def _bool_env(name, default=False):
     raw = os.getenv(name)
@@ -31,19 +29,16 @@ def _bool_env(name, default=False):
         return default
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
-
 def _int_env(name, default):
     raw = os.getenv(name)
     if raw is None or not raw.strip():
         return default
     return int(raw)
 
-
 def _private_key(raw):
     if not raw:
         return None
     return raw.replace("\\n", "\n").strip()
-
 
 @dataclass(frozen=True)
 class Settings:

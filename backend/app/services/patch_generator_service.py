@@ -651,8 +651,11 @@ Requirements:
 - Do not handle types, values, or files the issue and
   suggested_fix do not name.
 - Preserve unrelated code outside the edited span.
-- Use absolute 1-based file line numbers from the slice headers.
-- Copy old_text EXACTLY from slice content, including whitespace.
+- Use absolute 1-based file line numbers for the span of old_text
+  itself. Do not copy the slice LINES header unless old_text is
+  that entire span.
+- Copy old_text EXACTLY from CONTENT, including whitespace. Do not
+  include markdown fences, slice headers, or extra blank lines.
 - When context is insufficient to make a safe edit, return:
   status = "insufficient_context", files = [], and explain why.
 - When the correct target is unclear, return status = "ambiguous".
@@ -797,7 +800,7 @@ Requirements:
                 f"REASON: {reason}\n"
                 f"SYMBOLS: {symbol_text}\n"
                 f"TRUNCATED: {truncated}\n"
-                f"CONTENT:\n```\n{content}\n```"
+                f"CONTENT:\n{content}"
             )
 
         editable_paths = sorted({

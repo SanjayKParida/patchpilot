@@ -19,6 +19,7 @@ from app.code_intelligence.types import (
     ContextSlice,
     FileRollup,
 )
+from app.services.patch_apply import apply_proposal_to_map
 from app.services.patch_context import (
     build_line_map,
     expected_old_text,
@@ -46,11 +47,18 @@ from app.services.patch_types import (
 
 PATH = "lib/presentation/bloc/task_bloc.fake"
 TASK_BLOC = "lib/presentation/bloc/task_bloc.dart"
+ACTIVE_FILTER_PATH = "lib/domain/usecases/get_filtered_tasks.dart"
 TASK_REFRESH_FIXTURE = (
     REPO_ROOT
     / "evalutation"
     / "fixtures"
     / "task_refresh_pre_fix.json"
+)
+ACTIVE_FILTER_FIXTURE = (
+    REPO_ROOT
+    / "evalutation"
+    / "fixtures"
+    / "active_filter_pre_fix.json"
 )
 
 
@@ -163,6 +171,39 @@ def package(*slices, warnings=None, omitted=None):
     )
 
 
+def _active_filter_source():
+    data = json.loads(ACTIVE_FILTER_FIXTURE.read_text())
+    return next(
+        item["content"]
+        for item in data["files"]
+        if item["path"] == ACTIVE_FILTER_PATH
+    )
+
+
+def _active_filter_expected():
+    return normalize_text(_active_filter_source())
+
+
+def _active_filter_fixed(source=None):
+    source = source if source is not None else _active_filter_expected()
+    return source.replace(
+        "        return tasks.where((task) => task.isCompleted).toList();",
+        "        return tasks.where((task) => !task.isCompleted).toList();",
+        1,
+    )
+
+
+def active_filter_slice():
+    content = _active_filter_expected()
+    return slice(
+        path=ACTIVE_FILTER_PATH,
+        start=1,
+        end=32,
+        content=content,
+        tier=0,
+    )
+
+
 # ============================================================
 # TYPES
 # ============================================================
@@ -255,6 +296,93 @@ def test_validate_hunk_rejects_old_text_mismatch():
     assert "old_text mismatch" in outcome.error
 
 
+def test_validate_hunk_recovers_fenced_whole_file_old_text():
+    expected = _active_filter_expected()
+    hunk = PatchHunk(
+        start_line=1,
+        end_line=32,
+        old_text=f"```\n{expected}\n```",
+        new_text=f"```\n{_active_filter_fixed(expected)}\n```",
+    )
+
+    outcome = validate_hunk(ACTIVE_FILTER_PATH, hunk, [active_filter_slice()])
+
+    assert outcome.accepted is True
+    assert outcome.hunk.start_line == 1
+    assert outcome.hunk.end_line == 32
+    assert outcome.hunk.old_text == expected
+    assert outcome.hunk.new_text == _active_filter_fixed(expected)
+
+
+def test_validate_hunk_recovers_trailing_blank_line_on_whole_file_span():
+    expected = _active_filter_expected()
+    hunk = PatchHunk(
+        start_line=1,
+        end_line=32,
+        old_text=expected + "\n\n",
+        new_text=_active_filter_fixed(expected) + "\n\n",
+    )
+
+    outcome = validate_hunk(ACTIVE_FILTER_PATH, hunk, [active_filter_slice()])
+
+    assert outcome.accepted is True
+    assert outcome.hunk.old_text == expected
+    assert outcome.hunk.new_text == _active_filter_fixed(expected)
+
+
+def test_validate_hunk_does_not_guess_duplicate_defect_line():
+    """
+    Line 25 and line 27 are identical. A 1-32 hunk whose old_text is
+    only that line cannot be uniquely located, and replacing 1-32 with
+    one line would delete the file.
+    """
+
+    expected = _active_filter_expected()
+    hunk = PatchHunk(
+        start_line=1,
+        end_line=32,
+        old_text="        return tasks.where((task) => task.isCompleted).toList();",
+        new_text="        return tasks.where((task) => !task.isCompleted).toList();",
+    )
+
+    outcome = validate_hunk(ACTIVE_FILTER_PATH, hunk, [active_filter_slice()])
+
+    assert outcome.accepted is False
+    assert (
+        outcome.error
+        == f"old_text mismatch for {ACTIVE_FILTER_PATH}:1-32"
+    )
+    assert expected.split("\n")[24] == hunk.old_text
+    assert expected.split("\n")[26] == hunk.old_text
+
+
+def test_validate_hunk_retargets_unique_span_not_slice_header():
+    old = (
+        "      case TaskFilter.active:\n"
+        "        return tasks.where((task) => task.isCompleted).toList();\n"
+        "      case TaskFilter.completed:"
+    )
+    new = (
+        "      case TaskFilter.active:\n"
+        "        return tasks.where((task) => !task.isCompleted).toList();\n"
+        "      case TaskFilter.completed:"
+    )
+    hunk = PatchHunk(
+        start_line=1,
+        end_line=32,
+        old_text=old,
+        new_text=new,
+    )
+
+    outcome = validate_hunk(ACTIVE_FILTER_PATH, hunk, [active_filter_slice()])
+
+    assert outcome.accepted is True
+    assert outcome.hunk.start_line == 24
+    assert outcome.hunk.end_line == 26
+    assert outcome.hunk.old_text == old
+    assert outcome.hunk.new_text == new
+
+
 def test_validate_hunk_rejects_path_not_in_context():
     hunk = PatchHunk(
         start_line=1,
@@ -340,6 +468,8 @@ def test_prompt_includes_rules_issue_diagnosis_and_slices():
     assert "line 11" in prompt
     assert "========== RESPONSE FORMAT ==========" in prompt
     assert "insufficient_context" in prompt
+    assert "span of old_text" in prompt
+    assert "include markdown fences, slice headers" in prompt
 
 
 def test_prompt_surfaces_context_warnings_and_omitted_files():
@@ -696,6 +826,122 @@ def test_generate_rejects_mismatched_old_text():
     assert proposal.status == STATUS_EMPTY
     assert proposal.files == []
     assert any("old_text mismatch" in error for error in proposal.errors)
+
+
+def test_generate_recovers_active_filter_whole_file_fence_copy():
+    """
+    Production failure: Empty patch / old_text mismatch for
+    lib/domain/usecases/get_filtered_tasks.dart:1-32
+
+    ContextBuilder collapses this 32-line file to LINES: 1-32 and the
+    prompt used to wrap CONTENT in markdown fences. The model copies that
+    wrapper (or a trailing blank line) into old_text while using the
+    slice header as the hunk span. Validation compared that copy to the
+    reconstructed 32-line snapshot span and discarded the hunk.
+    """
+
+    expected = _active_filter_expected()
+    fixed = _active_filter_fixed(expected)
+    llm = FakeLLMService(
+        patch_json(
+            summary="Fix Active filter to return incomplete tasks",
+            reasoning=(
+                "Fix Active filter to return incomplete tasks by "
+                "inverting the isCompleted predicate"
+            ),
+            files=[
+                {
+                    "path": ACTIVE_FILTER_PATH,
+                    "hunks": [
+                        {
+                            "start_line": 1,
+                            "end_line": 32,
+                            "old_text": f"```\n{expected}\n```",
+                            "new_text": f"```\n{fixed}\n```",
+                        }
+                    ],
+                }
+            ],
+        )
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={
+            "title": "Active filter shows completed tasks",
+            "body": "Active uses the completed predicate",
+        },
+        diagnosis={
+            "root_cause": "Active filter uses task.isCompleted",
+            "suggested_fix": (
+                "Fix Active filter to return incomplete tasks by "
+                "inverting the isCompleted predicate"
+            ),
+        },
+        context_package=package(active_filter_slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    assert proposal.files
+    hunk = proposal.files[0].hunks[0]
+    assert proposal.files[0].path == ACTIVE_FILTER_PATH
+    assert hunk.start_line == 1
+    assert hunk.end_line == 32
+    assert hunk.old_text == expected
+    assert hunk.new_text == fixed
+    assert "```" not in hunk.old_text
+    assert "```" not in hunk.new_text
+
+    snapshot = {
+        item["path"]: item["content"]
+        for item in json.loads(ACTIVE_FILTER_FIXTURE.read_text())["files"]
+    }
+    patched, results, errors = apply_proposal_to_map(proposal, snapshot)
+
+    assert errors == []
+    assert all(item.applied for item in results)
+    assert (
+        "        return tasks.where((task) => !task.isCompleted).toList();"
+        in patched[ACTIVE_FILTER_PATH]
+    )
+    assert (
+        patched[ACTIVE_FILTER_PATH]
+        .splitlines()[24]
+        .strip()
+        .startswith("return tasks.where((task) => !task.isCompleted)")
+    )
+
+
+def test_generate_recovers_active_filter_already_fixed_old_text():
+    expected = _active_filter_expected()
+    fixed = _active_filter_fixed(expected)
+    llm = FakeLLMService(
+        patch_json(
+            files=[
+                {
+                    "path": ACTIVE_FILTER_PATH,
+                    "hunks": [
+                        {
+                            "start_line": 1,
+                            "end_line": 32,
+                            "old_text": fixed,
+                            "new_text": fixed,
+                        }
+                    ],
+                }
+            ],
+        )
+    )
+    service = PatchGeneratorService(llm_service=llm)
+    proposal = service.generate(
+        issue={"title": "x", "body": "y"},
+        diagnosis={"root_cause": "z"},
+        context_package=package(active_filter_slice()),
+    )
+
+    assert proposal.status == STATUS_OK
+    hunk = proposal.files[0].hunks[0]
+    assert hunk.old_text == expected
+    assert hunk.new_text == fixed
 
 
 def test_generate_rejects_path_not_in_context():
