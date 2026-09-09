@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 /// Layered surfaces replace heavy borders: chrome (shell), workspace (stage
 /// content), and elevated panels read as depth rather than boxes.
 class AppColors {
-  static const Color background = Color(0xFF101216);
+  static const Color background = Color(0xFF05050A);
+  static const Color canvas = Color(0xFF05050A);
+  static const Color gradientBlue = Color(0xFF3B6AE0);
+  static const Color gradientPurple = Color(0xFF7B4FD4);
   static const Color chrome = Color(0xFF161A20);
   static const Color workspace = Color(0xFF12151A);
   static const Color surface = Color(0xFF1A1E26);

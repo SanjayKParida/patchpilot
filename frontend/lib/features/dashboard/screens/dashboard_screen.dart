@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:patchpilot_web/core/assets.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/app_background.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
@@ -176,62 +176,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = _user;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: PageBody(
-              padding: const EdgeInsets.fromLTRB(32, 28, 32, 24),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildTopBar(user),
-                      const SizedBox(height: 32),
-                      _buildHeading(),
-                      const SizedBox(height: 24),
-                      if (_error != null) ...[
-                        ErrorNotice(message: _error!),
-                        const SizedBox(height: 6),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.textMuted,
-                              padding: EdgeInsets.zero,
-                            ),
-                            onPressed: user == null ? _connect : _manage,
-                            child: Text(
-                              user == null ? 'Try again' : 'Reconnect GitHub',
-                            ),
-                          ),
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
+        child: PageBody(
+          padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildTopBar(user),
+                  const SizedBox(height: 32),
+                  _buildHeading(),
+                  const SizedBox(height: 24),
+                  if (_error != null) ...[
+                    ErrorNotice(message: _error!),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.textMuted,
+                          padding: EdgeInsets.zero,
                         ),
-                        const SizedBox(height: 18),
-                      ],
-                      _buildRepositoryWorkspace(user),
-                      const SizedBox(height: 42),
-                      _buildDemoSection(),
-                    ],
-                  ),
-                ),
+                        onPressed: user == null ? _connect : _manage,
+                        child: Text(
+                          user == null ? 'Try again' : 'Reconnect GitHub',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
+                  _buildRepositoryWorkspace(user),
+                  const SizedBox(height: 42),
+                  _buildDemoSection(),
+                ],
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(32, 0, 32, 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: BrandImage(
-                asset: AppAssets.homeLogo,
-                height: 88,
-                semanticLabel: 'PatchPilot. From issue to impact.',
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/app_background.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/code_file_header.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/source_code_viewer.dart';
@@ -143,50 +144,54 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
         : '';
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ColoredBox(
-              color: AppTheme.surface,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Back to diagnosis',
-                    color: AppTheme.textMuted,
-                  ),
-                  Expanded(
-                    child: CodeFileHeader(
-                      fileName: fileName,
-                      directoryPath: directory,
-                      reason: widget.reason,
-                      language: _languageFromPath(path),
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
+        accent: AppTheme.stageDiagnosis,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ColoredBox(
+                color: AppTheme.surface.withValues(alpha: 0.82),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back),
+                      tooltip: 'Back to diagnosis',
+                      color: AppTheme.textMuted,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppTheme.border),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: ErrorNotice(message: _error!, onRetry: _load),
-                    )
-                  : SourceCodeViewer(
-                      key: _viewerKey,
-                      source: _file!.content,
-                      highlightedLine: widget.highlightLine,
-                      language: SyntaxHighlighter.languageFromPath(
-                        widget.path,
+                    Expanded(
+                      child: CodeFileHeader(
+                        fileName: fileName,
+                        directoryPath: directory,
+                        reason: widget.reason,
+                        language: _languageFromPath(path),
                       ),
                     ),
-            ),
-          ],
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppTheme.border),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: ErrorNotice(message: _error!, onRetry: _load),
+                      )
+                    : SourceCodeViewer(
+                        key: _viewerKey,
+                        source: _file!.content,
+                        highlightedLine: widget.highlightLine,
+                        language: SyntaxHighlighter.languageFromPath(
+                          widget.path,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Bundled brand images. The ChatGPT export sheet is a source file, not
-/// a runtime asset.
+/// Bundled brand images.
 class AppAssets {
   static const favicon = 'assets/favicon.png';
-  static const homeLogo = 'assets/home_screen_logo.png';
-  static const issuesLogo = 'assets/issues_screen_logo.png';
 }
 
 class BrandImage extends StatelessWidget {

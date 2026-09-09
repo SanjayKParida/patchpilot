@@ -13,6 +13,9 @@ export 'app_typography.dart';
 /// A single source of visual truth.
 class AppTheme {
   static const Color background = AppColors.background;
+  static const Color canvas = AppColors.canvas;
+  static const Color gradientBlue = AppColors.gradientBlue;
+  static const Color gradientPurple = AppColors.gradientPurple;
   static const Color chrome = AppColors.chrome;
   static const Color workspace = AppColors.workspace;
   static const Color surface = AppColors.surface;

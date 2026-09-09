@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/app_background.dart';
 import 'package:patchpilot_web/features/dashboard/screens/dashboard_screen.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_workflow.dart';
@@ -278,11 +279,14 @@ class _AppShellState extends State<AppShell> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.build(),
         home: const Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
+          backgroundColor: Colors.transparent,
+          body: AppBackground(
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
           ),
         ),
