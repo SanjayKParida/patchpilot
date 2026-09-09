@@ -2,22 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Full-screen dark canvas with a tinted wash.
+/// Full-screen dark canvas with a uniform bluish wash.
 ///
-/// Non-stage screens keep the default bluish tint. Repair stages
-/// pass [AppTheme.stageAccent] so the canvas matches the yellow rail.
+/// Every screen uses this same tint so chrome and body read as
+/// one surface.
 class AppBackground extends StatelessWidget {
   final Widget child;
-  final Color accent;
 
-  const AppBackground({
-    super.key,
-    required this.child,
-    this.accent = AppColors.accent,
-  });
+  const AppBackground({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
+    const accent = AppColors.accent;
+
     return Stack(
       fit: StackFit.expand,
       children: [

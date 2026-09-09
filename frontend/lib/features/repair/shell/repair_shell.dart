@@ -32,7 +32,6 @@ class RepairShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
-        accent: AppTheme.stageAccent,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

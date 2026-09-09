@@ -147,7 +147,6 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
-        accent: AppTheme.accent,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
