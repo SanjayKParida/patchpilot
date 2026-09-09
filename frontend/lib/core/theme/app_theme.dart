@@ -36,12 +36,13 @@ class AppTheme {
 
   static const double maxContentWidth = AppSpacing.maxContentWidth;
 
-  /// Stage accent colours — investigation → code → verify → decide → deliver.
-  static const Color stageDiagnosis = AppColors.accent;
-  static const Color stagePatch = AppColors.accent;
-  static const Color stageValidation = AppColors.warning;
-  static const Color stageReview = AppColors.teal;
-  static const Color stagePullRequest = AppColors.success;
+  /// Shared rail and canvas accent for every repair stage.
+  static const Color stageAccent = AppColors.warning;
+  static const Color stageDiagnosis = stageAccent;
+  static const Color stagePatch = stageAccent;
+  static const Color stageValidation = stageAccent;
+  static const Color stageReview = stageAccent;
+  static const Color stagePullRequest = stageAccent;
 
   static ThemeData build() {
     final base = ThemeData.dark(useMaterial3: true);

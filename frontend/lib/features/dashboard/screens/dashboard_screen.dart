@@ -468,12 +468,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           TextButton(
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.textMuted,
-              padding: EdgeInsets.zero,
+              foregroundColor: AppTheme.danger,
+              backgroundColor: AppTheme.danger.withValues(alpha: 0.10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadii.button,
+                side: BorderSide(
+                  color: AppTheme.danger.withValues(alpha: 0.45),
+                ),
+              ),
             ),
             onPressed: widget.onLogout,
-            child: const Text('Log out', style: TextStyle(fontSize: 12)),
+            child: const Text(
+              'Log out',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ],

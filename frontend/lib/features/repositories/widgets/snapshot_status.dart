@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 
 /// Compact, single-line repository/snapshot readiness metadata.
 /// Same inputs, same status semantics — quieter presentation only.
@@ -52,14 +53,16 @@ class SnapshotStatus extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: dotColor,
-                shape: BoxShape.circle,
-              ),
-            ),
+            status == 'preparing'
+                ? PulseDot(size: 7, color: AppTheme.accent)
+                : Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -80,11 +83,9 @@ class SnapshotStatus extends StatelessWidget {
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
+            child: AppProgressBar(
               value: percent <= 0 ? null : (percent.clamp(0, 100) / 100),
-              minHeight: 3,
-              color: AppTheme.accent,
-              backgroundColor: AppTheme.border,
+              height: 3,
             ),
           ),
         ],

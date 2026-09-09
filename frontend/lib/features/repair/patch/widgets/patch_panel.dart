@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/syntax_highlighter.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
@@ -314,16 +315,7 @@ class _PatchPanelState extends State<PatchPanel> {
               borderRadius: AppRadii.panel,
               border: Border.all(color: AppTheme.borderSubtle),
             ),
-            child: Center(
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.stagePatch,
-                ),
-              ),
-            ),
+            child: Center(child: AppSpinner(size: 18, color: AppTheme.accent)),
           )
         else if (_proposal == null)
           _buildEmpty()
@@ -365,7 +357,7 @@ class _PatchPanelState extends State<PatchPanel> {
 
     return Row(
       children: [
-        Icon(Icons.difference_outlined, size: 16, color: AppTheme.stagePatch),
+        Icon(Icons.difference_outlined, size: 16, color: AppTheme.accent),
         const SizedBox(width: 8),
         Flexible(
           child: Row(
@@ -404,7 +396,7 @@ class _PatchPanelState extends State<PatchPanel> {
           FilledButton(
             onPressed: _generate,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.stagePatch,
+              backgroundColor: AppTheme.accent,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
             child: const Text('Generate patch'),
@@ -629,7 +621,7 @@ class _FileDiff extends StatelessWidget {
                       const Icon(
                         Icons.insert_drive_file_outlined,
                         size: 14,
-                        color: AppTheme.stagePatch,
+                        color: AppTheme.accent,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -873,14 +865,7 @@ class _ValidationSection extends StatelessWidget {
             _statusChip(),
             const Spacer(),
             if (validating)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.accent,
-                ),
-              )
+              const AppSpinner(size: 16)
             else if (proposal.canValidate)
               FilledButton(
                 onPressed: onValidate,
@@ -1190,14 +1175,7 @@ class _DeliverySection extends StatelessWidget {
             _statusChip(),
             const Spacer(),
             if (delivering)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.accent,
-                ),
-              )
+              const AppSpinner(size: 16)
             else if (!succeeded)
               FilledButton(
                 onPressed: onDeliver,

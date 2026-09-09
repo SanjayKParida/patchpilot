@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/app_background.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
@@ -284,15 +285,17 @@ class _IssuesScreenState extends State<IssuesScreen> {
 
   Widget _buildListBody() {
     if (_loading) {
-      return Column(
-        children: List.generate(5, (i) {
-          return Column(
-            children: [
-              if (i > 0) Container(height: 1, color: AppTheme.borderSubtle),
-              const IssueRowSkeleton(),
-            ],
-          );
-        }),
+      return Shimmer(
+        child: Column(
+          children: List.generate(5, (i) {
+            return Column(
+              children: [
+                if (i > 0) Container(height: 1, color: AppTheme.borderSubtle),
+                const IssueRowSkeleton(),
+              ],
+            );
+          }),
+        ),
       );
     }
 

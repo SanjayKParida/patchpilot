@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/models/models.dart';
 
 class StatusBanner extends StatelessWidget {
@@ -45,14 +46,7 @@ class StatusBanner extends StatelessWidget {
       case AnalysisStatus.running:
         color = AppTheme.accent;
         title = 'Analyzing';
-        leading = const SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: AppTheme.accent,
-          ),
-        );
+        leading = const AppSpinner(size: 14);
     }
 
     return DecoratedBox(

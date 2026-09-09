@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'pull_request_models.dart';
@@ -134,14 +135,7 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
         else if (state.isCreating)
           const Row(
             children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.accent,
-                ),
-              ),
+              AppSpinner(size: 16),
               SizedBox(width: 10),
               Text(
                 'Creating pull request…',

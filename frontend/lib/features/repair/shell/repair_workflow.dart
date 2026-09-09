@@ -43,15 +43,11 @@ extension RepairStageAccent on RepairStage {
       case RepairStage.context:
         return AppTheme.textMuted;
       case RepairStage.diagnosis:
-        return AppTheme.stageDiagnosis;
       case RepairStage.patch:
-        return AppTheme.stagePatch;
       case RepairStage.validation:
-        return AppTheme.stageValidation;
       case RepairStage.review:
-        return AppTheme.stageReview;
       case RepairStage.pullRequest:
-        return AppTheme.stagePullRequest;
+        return AppTheme.stageAccent;
     }
   }
 }

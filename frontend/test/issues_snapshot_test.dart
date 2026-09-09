@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/features/repositories/screens/issues_screen.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
@@ -235,7 +236,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.textContaining('Preparing repository… 37%'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.byType(AppProgressBar), findsOneWidget);
 
     final disabledInkWell = tester.widget<InkWell>(
       find.ancestor(

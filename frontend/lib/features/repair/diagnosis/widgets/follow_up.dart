@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
@@ -98,14 +99,7 @@ class _FollowUpPanelState extends State<FollowUpPanel> {
                       ),
                     ),
                     child: _loading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                        ? const AppSpinner(size: 16, color: Colors.white)
                         : const Text('Ask'),
                   ),
                 ],

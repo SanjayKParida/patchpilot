@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/app_background.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/code_file_header.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/source_code_viewer.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/widgets/syntax_highlighter.dart';
@@ -153,9 +154,7 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
             children: [
               DecoratedBox(
                 decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppTheme.border),
-                  ),
+                  border: Border(bottom: BorderSide(color: AppTheme.border)),
                 ),
                 child: Row(
                   children: [
@@ -178,7 +177,7 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
               ),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: AppSpinner(size: 18))
                     : _error != null
                     ? Padding(
                         padding: const EdgeInsets.all(24),

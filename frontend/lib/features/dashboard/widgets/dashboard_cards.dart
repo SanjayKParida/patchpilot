@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/models/models.dart';
 
 /// Dashboard-only presentation.
@@ -37,40 +38,6 @@ class UserChip extends StatelessWidget {
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ],
-    );
-  }
-}
-
-class _ShimmerPulse extends StatefulWidget {
-  final Widget child;
-
-  const _ShimmerPulse({required this.child});
-
-  @override
-  State<_ShimmerPulse> createState() => _ShimmerPulseState();
-}
-
-class _ShimmerPulseState extends State<_ShimmerPulse>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(
-        begin: 0.35,
-        end: 0.75,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
-      child: widget.child,
     );
   }
 }
@@ -134,14 +101,7 @@ class ConnectPrompt extends StatelessWidget {
             ),
             onPressed: connecting ? null : onConnect,
             child: connecting
-                ? const SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
+                ? const AppSpinner(size: 15, color: Colors.white)
                 : const Text('Connect'),
           ),
         ],
@@ -214,11 +174,7 @@ class EmptyRepositoriesPrompt extends StatelessWidget {
             ),
             onPressed: managing ? null : onSelect,
             child: managing
-                ? const SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const AppSpinner(size: 15)
                 : const Text('Select repositories'),
           ),
         ],
@@ -623,7 +579,7 @@ class RepoListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ShimmerPulse(
+    return Shimmer(
       child: Column(
         children: [
           for (var i = 0; i < rows; i++) ...[
@@ -750,7 +706,7 @@ class DemoRowSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ShimmerPulse(
+    return Shimmer(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(

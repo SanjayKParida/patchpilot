@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'validation_models.dart';
@@ -11,45 +12,15 @@ import 'validation_models.dart';
 /// signal in place of a circular spinner. Intentionally minimal —
 /// it communicates activity without claiming to represent progress
 /// through any particular step.
-class ValidationPulseDot extends StatefulWidget {
+class ValidationPulseDot extends StatelessWidget {
   const ValidationPulseDot({super.key, this.size = 8, this.color});
 
   final double size;
   final Color? color;
 
   @override
-  State<ValidationPulseDot> createState() => _ValidationPulseDotState();
-}
-
-class _ValidationPulseDotState extends State<ValidationPulseDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(
-        begin: 0.3,
-        end: 1,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
-      child: Container(
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: widget.color ?? AppTheme.accent,
-        ),
-      ),
-    );
+    return PulseDot(size: size, color: color);
   }
 }
 

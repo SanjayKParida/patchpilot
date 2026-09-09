@@ -32,6 +32,7 @@ class RepairShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
+        accent: AppTheme.stageAccent,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,19 +70,13 @@ class RepairShell extends StatelessWidget {
                         ),
                       ),
                     if (continueAction != null)
-                      Positioned(
-                        right: 20,
-                        bottom: 20,
-                        child: continueAction!,
-                      ),
+                      Positioned(right: 20, bottom: 20, child: continueAction!),
                   ],
                 ),
               ),
               DecoratedBox(
                 decoration: const BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: AppTheme.borderSubtle),
-                  ),
+                  border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
                 ),
                 child: statusBar,
               ),

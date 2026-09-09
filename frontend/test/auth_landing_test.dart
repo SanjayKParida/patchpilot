@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/main.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
@@ -111,7 +112,7 @@ void main() {
     await tester.pumpWidget(PatchPilotApp(api: api, redirect: _Redirect()));
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(AppSpinner), findsOneWidget);
     expect(find.text('SanjayKParida/patchpilot-diagnosis-demo'), findsNothing);
     expect(find.text('Connect GitHub'), findsNothing);
 

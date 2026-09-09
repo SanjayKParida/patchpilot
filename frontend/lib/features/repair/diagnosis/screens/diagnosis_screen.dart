@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
@@ -211,7 +212,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
               else if (analysis == null ||
                   analysis.status == AnalysisStatus.queued ||
                   analysis.status == AnalysisStatus.running)
-                const _DiagnosisSkeleton()
+                const Shimmer(child: _DiagnosisSkeleton())
               else ...[
                 if (analysis.status == AnalysisStatus.completed ||
                     analysis.status == AnalysisStatus.failed)

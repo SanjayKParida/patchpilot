@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/api_client.dart';
@@ -285,16 +286,7 @@ class _Header extends StatelessWidget {
         ),
         if (isRunning) ...[
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: const SizedBox(
-              height: 2,
-              child: LinearProgressIndicator(
-                backgroundColor: AppTheme.border,
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
-              ),
-            ),
-          ),
+          const AppProgressBar(height: 2),
         ],
       ],
     );

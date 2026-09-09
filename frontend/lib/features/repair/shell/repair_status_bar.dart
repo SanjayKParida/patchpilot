@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/motion.dart';
 
 enum RepairStatusTone { neutral, accent, success, warning, danger, purple }
 
@@ -132,7 +133,7 @@ class _StatusLabel extends StatelessWidget {
     return Row(
       children: [
         if (isLoading)
-          _PulsingDot(color: tone)
+          PulseDot(size: 6, color: tone)
         else if (icon != null)
           Icon(icon, size: 13, color: tone),
         if (isLoading || icon != null) const SizedBox(width: 8),
@@ -164,44 +165,6 @@ class _StatusLabel extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _PulsingDot extends StatefulWidget {
-  const _PulsingDot({required this.color});
-
-  final Color color;
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween(
-        begin: 0.35,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
-      child: Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
-      ),
     );
   }
 }
