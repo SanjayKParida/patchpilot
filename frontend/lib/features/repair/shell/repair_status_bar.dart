@@ -18,7 +18,7 @@ extension _RepairStatusToneColor on RepairStatusTone {
       case RepairStatusTone.danger:
         return AppTheme.danger;
       case RepairStatusTone.purple:
-        return AppTheme.purple;
+        return AppTheme.accent;
     }
   }
 }

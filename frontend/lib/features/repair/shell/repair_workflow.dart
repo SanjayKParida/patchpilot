@@ -54,18 +54,6 @@ extension RepairStageAccent on RepairStage {
         return AppTheme.stagePullRequest;
     }
   }
-
-  /// Canvas wash for this stage. Issue/context keep the default
-  /// bluish-purple; later stages use their workflow accent.
-  Color get canvasAccent {
-    switch (this) {
-      case RepairStage.issue:
-      case RepairStage.context:
-        return AppTheme.gradientPurple;
-      default:
-        return accent;
-    }
-  }
 }
 
 class RepairWorkflow extends StatelessWidget {

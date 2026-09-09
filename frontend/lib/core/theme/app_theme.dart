@@ -15,7 +15,6 @@ class AppTheme {
   static const Color background = AppColors.background;
   static const Color canvas = AppColors.canvas;
   static const Color gradientBlue = AppColors.gradientBlue;
-  static const Color gradientPurple = AppColors.gradientPurple;
   static const Color chrome = AppColors.chrome;
   static const Color workspace = AppColors.workspace;
   static const Color surface = AppColors.surface;
@@ -39,7 +38,7 @@ class AppTheme {
 
   /// Stage accent colours — investigation → code → verify → decide → deliver.
   static const Color stageDiagnosis = AppColors.accent;
-  static const Color stagePatch = AppColors.purple;
+  static const Color stagePatch = AppColors.accent;
   static const Color stageValidation = AppColors.warning;
   static const Color stageReview = AppColors.teal;
   static const Color stagePullRequest = AppColors.success;

@@ -546,7 +546,7 @@ class _ProposalBody extends StatelessWidget {
   static Color _statusColor(String status) {
     switch (status) {
       case 'ok':
-        return AppTheme.purple;
+        return AppTheme.accent;
       case 'insufficient_context':
       case 'ambiguous':
         return AppTheme.warning;
@@ -1202,7 +1202,7 @@ class _DeliverySection extends StatelessWidget {
               FilledButton(
                 onPressed: onDeliver,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.purple,
+                  backgroundColor: AppTheme.accent,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 16,
@@ -1221,7 +1221,7 @@ class _DeliverySection extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 12.5,
                 fontFamily: AppTheme.mono,
-                color: AppTheme.purple,
+                color: AppTheme.accent,
               ),
             ),
           ),

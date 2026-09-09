@@ -146,13 +146,17 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
-        accent: AppTheme.stageDiagnosis,
+        accent: AppTheme.accent,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ColoredBox(
-                color: AppTheme.surface.withValues(alpha: 0.82),
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppTheme.border),
+                  ),
+                ),
                 child: Row(
                   children: [
                     IconButton(
@@ -172,7 +176,6 @@ class _CodeViewerScreenState extends State<CodeViewerScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: AppTheme.border),
               Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())

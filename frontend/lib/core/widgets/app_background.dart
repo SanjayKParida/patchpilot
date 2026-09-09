@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Full-screen dark canvas with a bluish-purple wash.
+/// Full-screen dark canvas with a uniform bluish wash.
 ///
-/// Repair stages pass [accent] so the wash follows the workflow
-/// without changing the underlying black base.
+/// One accent blue is used for the tint so chrome and body read as
+/// the same surface instead of a purple/blue mix.
 class AppBackground extends StatelessWidget {
   final Widget child;
   final Color accent;
@@ -13,7 +13,7 @@ class AppBackground extends StatelessWidget {
   const AppBackground({
     super.key,
     required this.child,
-    this.accent = AppColors.gradientPurple,
+    this.accent = AppColors.accent,
   });
 
   @override
@@ -22,36 +22,34 @@ class AppBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.easeOut,
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.canvas,
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
+                begin: Alignment.topCenter,
                 end: Alignment.bottomRight,
                 colors: [
+                  Color.lerp(AppColors.canvas, accent, 0.16)!,
                   AppColors.canvas,
-                  Color.lerp(const Color(0xFF0B0A14), accent, 0.34)!,
-                  Color.lerp(AppColors.canvas, AppColors.gradientBlue, 0.18)!,
+                  Color.lerp(AppColors.canvas, accent, 0.22)!,
                 ],
-                stops: const [0.0, 0.52, 1.0],
+                stops: const [0.0, 0.42, 1.0],
               ),
             ),
           ),
         ),
         Positioned.fill(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.easeOut,
+          child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: const Alignment(0.92, -0.82),
-                radius: 1.2,
+                center: const Alignment(0.72, -0.35),
+                radius: 1.35,
                 colors: [
-                  accent.withValues(alpha: 0.24),
+                  accent.withValues(alpha: 0.28),
+                  accent.withValues(alpha: 0.08),
                   Colors.transparent,
                 ],
+                stops: const [0.0, 0.38, 1.0],
               ),
             ),
           ),

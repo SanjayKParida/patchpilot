@@ -21,13 +21,13 @@ class SymbolButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: AppTheme.background,
-            border: Border.all(color: AppTheme.purple.withValues(alpha: 0.45)),
+            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.45)),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.my_location, size: 13, color: AppTheme.purple),
+              Icon(Icons.my_location, size: 13, color: AppTheme.accent),
               const SizedBox(width: 7),
               Text(
                 location.symbol,

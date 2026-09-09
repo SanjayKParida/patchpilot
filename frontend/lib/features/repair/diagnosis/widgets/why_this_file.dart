@@ -227,7 +227,7 @@ class _RelevantFileCardState extends State<RelevantFileCard> {
                     const Icon(
                       Icons.account_tree_outlined,
                       size: 13,
-                      color: AppTheme.purple,
+                      color: AppTheme.accent,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -242,7 +242,7 @@ class _RelevantFileCardState extends State<RelevantFileCard> {
                             TextSpan(
                               text: edge.relationship,
                               style: const TextStyle(
-                                color: AppTheme.purple,
+                                color: AppTheme.accent,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

@@ -673,7 +673,6 @@ class _RepairSessionState extends State<RepairSession> {
   Widget build(BuildContext context) {
     return RepairShell(
       inspectorPanelWidth: 340,
-      stageAccent: _stage.canvasAccent,
       header: RepairHeader(
         repositoryFullName: widget.repository.fullName,
         branch: _headerBranch,
