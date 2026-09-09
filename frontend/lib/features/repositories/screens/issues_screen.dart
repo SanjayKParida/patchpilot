@@ -166,25 +166,67 @@ class _IssuesScreenState extends State<IssuesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: PageBody(
-        padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            RepositoryHeader(
-              repository: widget.repository,
-              onBack: widget.onBack,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: PageBody(
+              padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  RepositoryHeader(
+                    repository: widget.repository,
+                    onBack: widget.onBack,
+                  ),
+                  const SizedBox(height: 12),
+                  SnapshotStatus(
+                    status: _snapshotStatus,
+                    sha: _snapshotSha,
+                    fileCount: _snapshotFileCount,
+                    error: _snapshotError,
+                    percent: _snapshotPercent,
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Text(
+                        'Issues',
+                        style: AppTypography.title.copyWith(fontSize: 16),
+                      ),
+                      if (!_loading) ...[
+                        const SizedBox(width: 10),
+                        Text(
+                          '${_visible.length} of ${_issues.length}',
+                          style: AppTypography.caption,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: AppRadii.panel,
+                      border: Border.all(color: AppTheme.borderSubtle),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildFilterBar(),
+                        Container(height: 1, color: AppTheme.borderSubtle),
+                        _buildListBody(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            SnapshotStatus(
-              status: _snapshotStatus,
-              sha: _snapshotSha,
-              fileCount: _snapshotFileCount,
-              error: _snapshotError,
-              percent: _snapshotPercent,
-            ),
-            const SizedBox(height: 18),
-            const Align(
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(28, 0, 28, 16),
+            child: Align(
               alignment: Alignment.centerLeft,
               child: BrandImage(
                 asset: AppAssets.issuesLogo,
@@ -193,41 +235,8 @@ class _IssuesScreenState extends State<IssuesScreen> {
                     'Your AI pair pilot from issue to pull request.',
               ),
             ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Text(
-                  'Issues',
-                  style: AppTypography.title.copyWith(fontSize: 16),
-                ),
-                if (!_loading) ...[
-                  const SizedBox(width: 10),
-                  Text(
-                    '${_visible.length} of ${_issues.length}',
-                    style: AppTypography.caption,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceElevated,
-                borderRadius: AppRadii.panel,
-                border: Border.all(color: AppTheme.borderSubtle),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildFilterBar(),
-                  Container(height: 1, color: AppTheme.borderSubtle),
-                  _buildListBody(),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

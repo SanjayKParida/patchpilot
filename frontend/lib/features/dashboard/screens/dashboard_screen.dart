@@ -177,43 +177,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: PageBody(
-        padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTopBar(user),
-                const SizedBox(height: 32),
-                _buildHeading(),
-                const SizedBox(height: 24),
-                if (_error != null) ...[
-                  ErrorNotice(message: _error!),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.textMuted,
-                        padding: EdgeInsets.zero,
-                      ),
-                      onPressed: user == null ? _connect : _manage,
-                      child: Text(
-                        user == null ? 'Try again' : 'Reconnect GitHub',
-                      ),
-                    ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: PageBody(
+              padding: const EdgeInsets.fromLTRB(32, 28, 32, 24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildTopBar(user),
+                      const SizedBox(height: 32),
+                      _buildHeading(),
+                      const SizedBox(height: 24),
+                      if (_error != null) ...[
+                        ErrorNotice(message: _error!),
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.textMuted,
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: user == null ? _connect : _manage,
+                            child: Text(
+                              user == null ? 'Try again' : 'Reconnect GitHub',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                      ],
+                      _buildRepositoryWorkspace(user),
+                      const SizedBox(height: 42),
+                      _buildDemoSection(),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                ],
-                _buildRepositoryWorkspace(user),
-                const SizedBox(height: 42),
-                _buildDemoSection(),
-              ],
+                ),
+              ),
             ),
           ),
-        ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(32, 0, 32, 20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: BrandImage(
+                asset: AppAssets.homeLogo,
+                height: 88,
+                semanticLabel: 'PatchPilot. From issue to impact.',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -341,12 +359,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const BrandImage(
-          asset: AppAssets.homeLogo,
-          height: 88,
-          semanticLabel: 'PatchPilot. From issue to impact.',
-        ),
-        const SizedBox(height: 22),
         Text(
           eyebrow,
           style: const TextStyle(
