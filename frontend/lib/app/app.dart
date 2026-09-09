@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
 
@@ -22,16 +21,11 @@ class PatchPilotApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PatchPilot',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(),
-      home: AppShell(
-        api: api,
-        redirect: redirect,
-        refreshGrantsOnStart: refreshGrantsOnStart,
-        initialAuthError: initialAuthError,
-      ),
+    return AppShell(
+      api: api,
+      redirect: redirect,
+      refreshGrantsOnStart: refreshGrantsOnStart,
+      initialAuthError: initialAuthError,
     );
   }
 }

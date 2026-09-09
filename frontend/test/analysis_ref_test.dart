@@ -69,7 +69,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Analyzed at f0bfc5b317f4'), findsOneWidget);
+    expect(find.textContaining('f0bfc5b317f4'), findsWidgets);
     expect(find.text('Active filter uses task.isCompleted.'), findsOneWidget);
 
     await tester.tap(find.text('Patch'));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
@@ -36,6 +37,9 @@ class RepairSession extends StatefulWidget {
   final String? ref;
   final VoidCallback onBack;
   final GithubRedirect? redirect;
+  final RepairStage? requestedStage;
+  final ValueChanged<RepairStage>? onStageCommitted;
+  final ValueChanged<RepairStage>? onStageNormalized;
 
   const RepairSession({
     super.key,
@@ -46,6 +50,9 @@ class RepairSession extends StatefulWidget {
     required this.onBack,
     this.ref,
     this.redirect,
+    this.requestedStage,
+    this.onStageCommitted,
+    this.onStageNormalized,
   });
 
   @override
@@ -128,15 +135,29 @@ class _RepairSessionState extends State<RepairSession> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _hydrateArtifacts();
       });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _applyRequestedStage(widget.requestedStage);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(RepairSession oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.requestedStage != oldWidget.requestedStage) {
+      _applyRequestedStage(widget.requestedStage);
     }
   }
 
   void _onDiagnosisUpdate(Analysis? analysis, String? error, bool fromCache) {
+    var resetToDiagnosis = false;
     setState(() {
       _analysis = analysis;
       _error = error;
       _fromCache = fromCache;
       if (!_diagnosisReady) {
+        resetToDiagnosis = _stage != RepairStage.diagnosis;
         _stage = RepairStage.diagnosis;
         _openedPatch = false;
         _openedValidation = false;
@@ -147,6 +168,9 @@ class _RepairSessionState extends State<RepairSession> {
         _clearArtifacts();
       }
     });
+    if (resetToDiagnosis) {
+      widget.onStageNormalized?.call(RepairStage.diagnosis);
+    }
     if (_diagnosisReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _hydrateArtifacts();
@@ -190,6 +214,7 @@ class _RepairSessionState extends State<RepairSession> {
     } on ApiException catch (e) {
       if (e.statusCode != 409 && !_isMissingArtifact(e)) {
         if (mounted) setState(() => _error = e.message);
+        if (mounted) _applyRequestedStage(widget.requestedStage);
         return;
       }
     }
@@ -200,6 +225,7 @@ class _RepairSessionState extends State<RepairSession> {
       } on ApiException catch (e) {
         if (!_isMissingArtifact(e)) {
           if (mounted) setState(() => _error = e.message);
+          if (mounted) _applyRequestedStage(widget.requestedStage);
           return;
         }
       }
@@ -211,6 +237,7 @@ class _RepairSessionState extends State<RepairSession> {
       } on ApiException catch (e) {
         if (!_isMissingArtifact(e)) {
           if (mounted) setState(() => _error = e.message);
+          if (mounted) _applyRequestedStage(widget.requestedStage);
           return;
         }
       }
@@ -222,6 +249,7 @@ class _RepairSessionState extends State<RepairSession> {
       } on ApiException catch (e) {
         if (!_isMissingArtifact(e)) {
           if (mounted) setState(() => _error = e.message);
+          if (mounted) _applyRequestedStage(widget.requestedStage);
           return;
         }
       }
@@ -234,6 +262,7 @@ class _RepairSessionState extends State<RepairSession> {
       _approval ??= approval;
       _delivery ??= delivery;
     });
+    _applyRequestedStage(widget.requestedStage);
   }
 
   bool _canEnter(RepairStage stage) {
@@ -273,19 +302,36 @@ class _RepairSessionState extends State<RepairSession> {
     }
   }
 
+  void _afterBuild(VoidCallback action) {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      action();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) action();
+    });
+  }
+
   void _showSnack(String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message, style: const TextStyle(color: AppTheme.text)),
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.surfaceAlt,
-        ),
-      );
+    _afterBuild(() {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              message,
+              style: const TextStyle(color: AppTheme.text),
+            ),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.surfaceAlt,
+          ),
+        );
+    });
   }
 
   void _selectStage(RepairStage stage) {
@@ -305,6 +351,44 @@ class _RepairSessionState extends State<RepairSession> {
       if (stage == RepairStage.review) _openedReview = true;
       if (stage == RepairStage.pullRequest) _openedPullRequest = true;
     });
+    widget.onStageCommitted?.call(stage);
+  }
+
+  RepairStage _furthestAllowed() {
+    var allowed = RepairStage.diagnosis;
+    for (final stage in _workflowStages) {
+      if (_canEnter(stage)) allowed = stage;
+    }
+    return allowed;
+  }
+
+  RepairStage _normalizeStage(RepairStage stage) {
+    if (stage == RepairStage.context) return RepairStage.patch;
+    if (stage == RepairStage.issue) return RepairStage.diagnosis;
+    return stage;
+  }
+
+  void _adoptStage(RepairStage stage) {
+    _stage = stage;
+    _inspectedSlice = null;
+    _showInspector = false;
+    if (stage == RepairStage.patch) _openedPatch = true;
+    if (stage == RepairStage.validation) _openedValidation = true;
+    if (stage == RepairStage.review) _openedReview = true;
+    if (stage == RepairStage.pullRequest) _openedPullRequest = true;
+  }
+
+  void _applyRequestedStage(RepairStage? requested) {
+    if (requested == null) return;
+    final stage = _normalizeStage(requested);
+    if (stage == _stage) return;
+    if (!_canEnter(stage)) {
+      final allowed = _furthestAllowed();
+      _showSnack(_lockedMessage(stage));
+      _afterBuild(() => widget.onStageNormalized?.call(allowed));
+      return;
+    }
+    setState(() => _adoptStage(stage));
   }
 
   Set<RepairStage> get _completedStages {

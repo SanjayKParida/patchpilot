@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/features/dashboard/screens/dashboard_screen.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_workflow.dart';
 import 'package:patchpilot_web/features/repositories/screens/issues_screen.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
@@ -9,6 +12,8 @@ import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/services/browser_location.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
 import 'package:patchpilot_web/services/session_token.dart';
+
+import 'app_routes.dart';
 
 class AppShell extends StatefulWidget {
   final ApiClient? api;
@@ -34,9 +39,8 @@ class _AppShellState extends State<AppShell> {
 
   final _session = ValueNotifier<AuthUser?>(null);
   final _cache = AnalysisCache();
-  final _navigatorKey = GlobalKey<NavigatorState>();
 
-  Repository? _repository;
+  GoRouter? _router;
   bool _authReady = false;
 
   @override
@@ -58,6 +62,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _router?.dispose();
     _session.dispose();
     super.dispose();
   }
@@ -112,72 +117,183 @@ class _AppShellState extends State<AppShell> {
     _session.value = null;
   }
 
-  void _openIssues(Repository repository) {
-    setState(() => _repository = repository);
-
-    _navigatorKey.currentState?.push(
-      MaterialPageRoute<void>(
-        builder: (_) => IssuesScreen(
-          api: _api,
-          cache: _cache,
-          repository: repository,
-          onIssueSelected: _openDiagnosis,
-          onBack: () => _navigatorKey.currentState?.pop(),
-        ),
-      ),
-    );
+  bool _isCurrentLocation(String location) {
+    final router = _router;
+    if (router == null) return false;
+    final current = router.routeInformationProvider.value.uri;
+    final target = Uri.parse(location);
+    return current.path == target.path && current.query == target.query;
   }
 
-  void _openDiagnosis(Issue issue, {String? ref}) {
-    final repository = _repository;
-    if (repository == null) return;
+  void _go(String location, {Object? extra}) {
+    if (_isCurrentLocation(location)) return;
+    _router?.go(location, extra: extra);
+  }
 
-    _navigatorKey.currentState?.push(
-      MaterialPageRoute<void>(
-        builder: (_) => RepairSession(
-          api: _api,
-          cache: _cache,
-          repository: repository,
-          issue: issue,
-          ref: ref,
-          redirect: _redirect,
-          onBack: () => _navigatorKey.currentState?.pop(),
+  void _replace(String location, {Object? extra}) {
+    if (_isCurrentLocation(location)) return;
+    _router?.replace(location, extra: extra);
+  }
+
+  GoRouter _createRouter() {
+    return GoRouter(
+      initialLocation: AppRoutes.dashboard,
+      routes: [
+        GoRoute(
+          path: AppRoutes.dashboard,
+          builder: (context, state) {
+            return DashboardScreen(
+              api: _api,
+              session: _session,
+              onRepositorySelected: (repository) {
+                _go(
+                  AppRoutes.issues(repository.owner, repository.repo),
+                  extra: repository,
+                );
+              },
+              onConnectGithub: _connectGithub,
+              onManageGithub: _manageGithub,
+              onLogout: _logout,
+              refreshGrantsOnStart:
+                  widget.refreshGrantsOnStart ??
+                  Uri.base.queryParameters.containsKey('connected'),
+              initialAuthError:
+                  widget.initialAuthError ??
+                  Uri.base.queryParameters['auth_error'],
+            );
+          },
         ),
-      ),
+        GoRoute(
+          path: '/r/:owner/:repo',
+          builder: (context, state) {
+            final owner = state.pathParameters['owner'] ?? '';
+            final repo = state.pathParameters['repo'] ?? '';
+            final repository = state.extra is Repository
+                ? state.extra as Repository
+                : AppRoutes.repositoryFromPath(owner, repo);
+
+            return IssuesScreen(
+              api: _api,
+              cache: _cache,
+              repository: repository,
+              onIssueSelected: (issue, {String? ref}) {
+                _go(
+                  AppRoutes.repair(
+                    owner: owner,
+                    repo: repo,
+                    number: issue.number,
+                    ref: ref,
+                  ),
+                  extra: RepairNavExtra(repository: repository, issue: issue),
+                );
+              },
+              onBack: () => _go(AppRoutes.dashboard),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/r/:owner/:repo/issues/:number',
+          redirect: (context, state) {
+            final owner = state.pathParameters['owner'] ?? '';
+            final repo = state.pathParameters['repo'] ?? '';
+            final number = int.tryParse(state.pathParameters['number'] ?? '');
+            if (number == null) return AppRoutes.dashboard;
+            return AppRoutes.repair(
+              owner: owner,
+              repo: repo,
+              number: number,
+              ref: state.uri.queryParameters['ref'],
+            );
+          },
+        ),
+        GoRoute(
+          path: '/r/:owner/:repo/issues/:number/:stage',
+          builder: (context, state) {
+            final owner = state.pathParameters['owner'] ?? '';
+            final repoName = state.pathParameters['repo'] ?? '';
+            final number =
+                int.tryParse(state.pathParameters['number'] ?? '') ?? 0;
+            final ref = state.uri.queryParameters['ref'];
+            final requested = AppRoutes.stageFrom(
+              state.pathParameters['stage'],
+            );
+
+            final extra = state.extra;
+            late final Repository repository;
+            late final Issue issue;
+            if (extra is RepairNavExtra) {
+              repository = extra.repository;
+              issue = extra.issue;
+            } else if (extra is Repository) {
+              repository = extra;
+              issue = Issue(number: number, title: '');
+            } else {
+              repository = AppRoutes.repositoryFromPath(owner, repoName);
+              issue = Issue(number: number, title: '');
+            }
+
+            void commit(RepairStage stage, {required bool replace}) {
+              final location = AppRoutes.repair(
+                owner: owner,
+                repo: repoName,
+                number: number,
+                stage: stage,
+                ref: ref,
+              );
+              final nav = RepairNavExtra(repository: repository, issue: issue);
+              if (replace) {
+                _replace(location, extra: nav);
+              } else {
+                _go(location, extra: nav);
+              }
+            }
+
+            return RepairSession(
+              key: ValueKey('$owner/$repoName/$number/${ref ?? ''}'),
+              api: _api,
+              cache: _cache,
+              repository: repository,
+              issue: issue,
+              ref: ref,
+              redirect: _redirect,
+              requestedStage: requested,
+              onStageCommitted: (stage) => commit(stage, replace: false),
+              onStageNormalized: (stage) => commit(stage, replace: true),
+              onBack: () =>
+                  _go(AppRoutes.issues(owner, repoName), extra: repository),
+            );
+          },
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_authReady) {
-      return const Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
+      return MaterialApp(
+        title: 'PatchPilot',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.build(),
+        home: const Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         ),
       );
     }
 
-    return Navigator(
-      key: _navigatorKey,
-      onGenerateRoute: (_) => MaterialPageRoute<void>(
-        builder: (_) => DashboardScreen(
-          api: _api,
-          session: _session,
-          onRepositorySelected: _openIssues,
-          onConnectGithub: _connectGithub,
-          onManageGithub: _manageGithub,
-          onLogout: _logout,
-          refreshGrantsOnStart:
-              widget.refreshGrantsOnStart ??
-              Uri.base.queryParameters.containsKey('connected'),
-          initialAuthError:
-              widget.initialAuthError ?? Uri.base.queryParameters['auth_error'],
-        ),
-      ),
+    _router ??= _createRouter();
+
+    return MaterialApp.router(
+      title: 'PatchPilot',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.build(),
+      routerConfig: _router,
     );
   }
 }

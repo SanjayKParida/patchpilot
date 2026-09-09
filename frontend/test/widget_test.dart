@@ -40,11 +40,16 @@ void main() {
     );
 
     await tester.pumpWidget(PatchPilotApp(api: api));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('PatchPilot'), findsOneWidget);
-    expect(find.text('Open Demo'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Connect GitHub'), findsOneWidget);
+    expect(find.text('PatchPilot'), findsWidgets);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
+    expect(find.text('Connect GitHub'), findsWidgets);
   });
 
   testWidgets('short text does not show a more control', (tester) async {

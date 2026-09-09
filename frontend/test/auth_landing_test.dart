@@ -89,7 +89,8 @@ Future<void> _pumpApp(
     ),
   );
   await tester.pump();
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
 }
 
 void main() {
@@ -111,13 +112,18 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Open Demo'), findsNothing);
+    expect(find.text('SanjayKParida/patchpilot-diagnosis-demo'), findsNothing);
     expect(find.text('Connect GitHub'), findsNothing);
 
     gate.complete(_json({'authenticated': false, 'user': null}));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('malformed session response still shows Demo', (tester) async {
@@ -137,7 +143,10 @@ void main() {
 
     await _pumpApp(tester, api: api);
 
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('Connect GitHub'), findsWidgets);
   });
 
@@ -154,12 +163,11 @@ void main() {
 
     await _pumpApp(tester, api: api);
 
-    expect(find.text('Demo'), findsWidgets);
+    expect(find.text('DEMO'), findsWidgets);
     expect(
       find.text('SanjayKParida/patchpilot-diagnosis-demo'),
       findsOneWidget,
     );
-    expect(find.text('Open Demo'), findsOneWidget);
     expect(find.text('Connect GitHub'), findsWidgets);
     expect(find.text('octocat'), findsNothing);
     expect(find.text('Log out'), findsNothing);
@@ -184,12 +192,14 @@ void main() {
     await _pumpApp(tester, api: api);
 
     expect(find.text('octocat'), findsOneWidget);
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('2 connected'), findsOneWidget);
     expect(find.text('Log out'), findsOneWidget);
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('octocat/private-app'), findsOneWidget);
-    expect(find.text('Private'), findsWidgets);
-    expect(find.text('Write'), findsOneWidget);
+    expect(find.text('WRITE'), findsOneWidget);
     expect(find.text('Connect GitHub'), findsNothing);
     expect(find.text('Manage GitHub access'), findsOneWidget);
   });
@@ -215,8 +225,9 @@ void main() {
     });
 
     await _pumpApp(tester, api: api, redirect: redirect);
-    await tester.tap(find.widgetWithText(FilledButton, 'Connect GitHub'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.pump();
+    await tester.pump();
 
     expect(
       redirect.url,
@@ -251,11 +262,16 @@ void main() {
     expect(find.text('octocat'), findsOneWidget);
 
     await tester.tap(find.text('Log out'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('octocat'), findsNothing);
-    expect(find.widgetWithText(FilledButton, 'Connect GitHub'), findsOneWidget);
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('octocat/private-app'), findsNothing);
     expect(find.text('Manage GitHub access'), findsNothing);
   });
@@ -277,19 +293,17 @@ void main() {
     });
 
     await _pumpApp(tester, api: api);
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('2 connected'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await _pumpApp(tester, api: api);
 
     expect(find.text('octocat'), findsOneWidget);
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('2 connected'), findsOneWidget);
     expect(find.text('octocat/private-app'), findsOneWidget);
   });
 
-  testWidgets('repositories are prioritized above the demo', (
-    tester,
-  ) async {
+  testWidgets('repositories are prioritized above the demo', (tester) async {
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
         return _json({'authenticated': false, 'user': null});
@@ -303,9 +317,11 @@ void main() {
     await _pumpApp(tester, api: api);
 
     final connect = tester.getTopLeft(
-      find.widgetWithText(FilledButton, 'Connect GitHub'),
+      find.widgetWithText(FilledButton, 'Connect'),
     );
-    final demo = tester.getTopLeft(find.text('Open Demo'));
+    final demo = tester.getTopLeft(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+    );
     expect(connect.dy, lessThan(demo.dy));
   });
 
@@ -326,12 +342,15 @@ void main() {
     await _pumpApp(tester, api: api);
 
     expect(find.text('octocat/locked'), findsOneWidget);
-    expect(find.text('No access'), findsOneWidget);
+    expect(find.text('NO ACCESS'), findsOneWidget);
 
     await tester.tap(find.text('octocat/locked'));
     await tester.pump();
 
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('octocat/private-app'), findsOneWidget);
   });
 
@@ -360,27 +379,29 @@ void main() {
 
     await _pumpApp(tester, api: api, redirect: redirect);
 
-    expect(find.text('Connect a repository'), findsOneWidget);
+    expect(find.text('No repositories selected'), findsOneWidget);
     expect(
-      find.text('Choose the repositories PatchPilot can access.'),
+      find.text('Choose repositories from your GitHub installation.'),
       findsOneWidget,
     );
     expect(
-      find.widgetWithText(FilledButton, 'Select repositories on GitHub'),
+      find.widgetWithText(FilledButton, 'Select repositories'),
       findsOneWidget,
     );
     expect(
       find.textContaining('Install PatchPilot on the accounts'),
       findsNothing,
     );
-    expect(find.text('Open Demo'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
     expect(find.text('Manage GitHub access'), findsNothing);
     expect(find.text('octocat'), findsOneWidget);
 
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Select repositories on GitHub'),
-    );
-    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Select repositories'));
+    await tester.pump();
+    await tester.pump();
     expect(
       redirect.url,
       'https://github.com/apps/patchpilot-dev/installations/new',
@@ -413,7 +434,8 @@ void main() {
     await _pumpApp(tester, api: api, redirect: redirect);
     await tester.ensureVisible(find.text('Manage GitHub access'));
     await tester.tap(find.text('Manage GitHub access'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
     expect(
       redirect.url,
       'https://github.com/apps/patchpilot-dev/installations/new',
@@ -445,7 +467,7 @@ void main() {
 
     expect(refreshed, isTrue);
     expect(find.text('octocat/private-app'), findsOneWidget);
-    expect(find.text('Connect a repository'), findsNothing);
+    expect(find.text('No repositories selected'), findsNothing);
   });
 
   testWidgets('authorization error keeps Demo usable', (tester) async {
@@ -467,8 +489,11 @@ void main() {
 
     expect(find.text('GitHub authorization failed'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
-    expect(find.text('Open Demo'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Connect GitHub'), findsOneWidget);
+    expect(
+      find.text('SanjayKParida/patchpilot-diagnosis-demo'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
   });
 
   testWidgets('repository search filters the authorized list', (tester) async {
@@ -519,13 +544,14 @@ void main() {
 
     await _pumpApp(tester, api: api);
     await tester.tap(find.text('octocat/private-app'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('This repository has no open issues.'), findsOneWidget);
     expect(
       find.text('Commit SHA or ref (optional). Leave blank for current HEAD.'),
       findsOneWidget,
     );
-    expect(find.text('Open Demo'), findsNothing);
+    expect(find.text('SanjayKParida/patchpilot-diagnosis-demo'), findsNothing);
   });
 }
