@@ -37,6 +37,8 @@ class RepairSession extends StatefulWidget {
   final String? ref;
   final VoidCallback onBack;
   final GithubRedirect? redirect;
+  final ValueNotifier<AuthUser?>? session;
+  final Future<void> Function()? onConnectGithub;
   final RepairStage? requestedStage;
   final ValueChanged<RepairStage>? onStageCommitted;
   final ValueChanged<RepairStage>? onStageNormalized;
@@ -50,6 +52,8 @@ class RepairSession extends StatefulWidget {
     required this.onBack,
     this.ref,
     this.redirect,
+    this.session,
+    this.onConnectGithub,
     this.requestedStage,
     this.onStageCommitted,
     this.onStageNormalized,
@@ -123,9 +127,13 @@ class _RepairSessionState extends State<RepairSession> {
 
   bool get _reviewApproved => _approval?.approved == true;
 
+  bool get _needsGithubConnect =>
+      widget.repository.demo && widget.session?.value == null;
+
   @override
   void initState() {
     super.initState();
+    widget.session?.addListener(_onSession);
     final cached = widget.cache.read(_cacheKey);
     if (cached != null) {
       _analysis = cached;
@@ -145,9 +153,23 @@ class _RepairSessionState extends State<RepairSession> {
   @override
   void didUpdateWidget(RepairSession oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.session != oldWidget.session) {
+      oldWidget.session?.removeListener(_onSession);
+      widget.session?.addListener(_onSession);
+    }
     if (widget.requestedStage != oldWidget.requestedStage) {
       _applyRequestedStage(widget.requestedStage);
     }
+  }
+
+  @override
+  void dispose() {
+    widget.session?.removeListener(_onSession);
+    super.dispose();
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
   }
 
   void _onDiagnosisUpdate(Analysis? analysis, String? error, bool fromCache) {
@@ -485,6 +507,7 @@ class _RepairSessionState extends State<RepairSession> {
   }
 
   Future<void> _createDraftPr({String? title, String? description}) async {
+    if (_needsGithubConnect) return;
     if (_delivering) return;
     if (_validation?.isPassed != true) return;
     if (_approval?.approved != true) return;
@@ -792,6 +815,8 @@ class _RepairSessionState extends State<RepairSession> {
                 child: PullRequestScreen(
                   key: ValueKey('pr-$id'),
                   state: _pullRequestState,
+                  needsGithubConnect: _needsGithubConnect,
+                  onConnectGithub: widget.onConnectGithub,
                   onCreatePr: (title, description) {
                     _createDraftPr(title: title, description: description);
                   },

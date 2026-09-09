@@ -80,6 +80,13 @@ Analysis _completedAnalysis() {
 
 const _repo = Repository(owner: 'owner', repo: 'repo', fullName: 'owner/repo');
 
+const _demoRepo = Repository(
+  owner: 'SanjayKParida',
+  repo: 'patchpilot-diagnosis-demo',
+  fullName: 'SanjayKParida/patchpilot-diagnosis-demo',
+  demo: true,
+);
+
 const _issue = Issue(
   number: 1,
   title: 'Refresh spinner never stops',
@@ -291,6 +298,9 @@ Future<void> _pumpSessionWithApi(
   AnalysisCache cache,
   ApiClient api, {
   GithubRedirect? redirect,
+  Repository repository = _repo,
+  ValueNotifier<AuthUser?>? session,
+  Future<void> Function()? onConnectGithub,
 }) async {
   tester.view.physicalSize = const Size(1200, 2400);
   tester.view.devicePixelRatio = 1.0;
@@ -303,9 +313,11 @@ Future<void> _pumpSessionWithApi(
       home: RepairSession(
         api: api,
         cache: cache,
-        repository: _repo,
+        repository: repository,
         issue: _issue,
         redirect: redirect,
+        session: session,
+        onConnectGithub: onConnectGithub,
         onBack: () {},
       ),
     ),
@@ -854,5 +866,47 @@ void main() {
 
     expect(deliverCalls, 2);
     expect(find.text('Pull request #12 created'), findsOneWidget);
+  });
+
+  testWidgets('anonymous demo shows Connect GitHub instead of Create PR', (
+    tester,
+  ) async {
+    var connectCalls = 0;
+    var deliverCalls = 0;
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_demoRepo.owner, _demoRepo.repo, _issue.number),
+      _completedAnalysis(),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      _artifactApi(approved: true, onDeliver: () => deliverCalls += 1),
+      repository: _demoRepo,
+      onConnectGithub: () async => connectCalls += 1,
+    );
+
+    await tester.tap(find.text('Pull Request'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Connect GitHub to create this pull request'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'PatchPilot can analyze and validate this demo issue without GitHub access. Creating a pull request requires a GitHub account with write access to the repository.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Connect GitHub →'), findsOneWidget);
+    expect(find.text('Create pull request'), findsNothing);
+
+    await tester.tap(find.text('Connect GitHub →'));
+    await tester.pump();
+
+    expect(connectCalls, 1);
+    expect(deliverCalls, 0);
   });
 }

@@ -10,6 +10,11 @@ import 'pull_request_widgets.dart';
 class PullRequestScreen extends StatefulWidget {
   final PullRequestState state;
 
+  /// Anonymous demo users must connect GitHub before Create PR.
+  final bool needsGithubConnect;
+
+  final Future<void> Function()? onConnectGithub;
+
   /// Called with the current title and description.
   final void Function(String title, String description) onCreatePr;
 
@@ -26,6 +31,8 @@ class PullRequestScreen extends StatefulWidget {
     required this.state,
     required this.onCreatePr,
     required this.onRetry,
+    this.needsGithubConnect = false,
+    this.onConnectGithub,
     this.onViewPr,
     this.onReturnToIssues,
   });
@@ -122,7 +129,9 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
 
         const SizedBox(height: 20),
 
-        if (state.isCreating)
+        if (widget.needsGithubConnect)
+          _GithubConnectPrerequisite(onConnectGithub: widget.onConnectGithub)
+        else if (state.isCreating)
           const Row(
             children: [
               SizedBox(
@@ -158,7 +167,9 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
             ),
           ),
 
-        if (!canCreate && state.status == PullRequestStatus.ready) ...[
+        if (!widget.needsGithubConnect &&
+            !canCreate &&
+            state.status == PullRequestStatus.ready) ...[
           const SizedBox(height: 10),
           const Text(
             'A successful validation and approved review are required.',
@@ -207,6 +218,48 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
         PullRequestPrerequisites(
           validationPassed: state.validationPassed,
           reviewApproved: state.reviewApproved,
+        ),
+      ],
+    );
+  }
+}
+
+class _GithubConnectPrerequisite extends StatelessWidget {
+  final Future<void> Function()? onConnectGithub;
+
+  const _GithubConnectPrerequisite({this.onConnectGithub});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Connect GitHub to create this pull request',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.text,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'PatchPilot can analyze and validate this demo issue without GitHub access. Creating a pull request requires a GitHub account with write access to the repository.',
+          style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: onConnectGithub == null
+                ? null
+                : () => onConnectGithub!(),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 46),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+            ),
+            child: const Text('Connect GitHub →'),
+          ),
         ),
       ],
     );

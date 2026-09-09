@@ -256,6 +256,8 @@ class _AppShellState extends State<AppShell> {
               issue: issue,
               ref: ref,
               redirect: _redirect,
+              session: _session,
+              onConnectGithub: _connectGithub,
               requestedStage: requested,
               onStageCommitted: (stage) => commit(stage, replace: false),
               onStageNormalized: (stage) => commit(stage, replace: true),
