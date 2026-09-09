@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assets.dart';
 import '../theme/app_theme.dart';
 
 /// Centres page content and caps its width so long file paths and
@@ -38,14 +39,13 @@ class Branding extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: AppTheme.accent,
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          child: BrandImage(
+            asset: AppAssets.favicon,
+            width: size,
+            height: size,
           ),
-          child: Icon(Icons.radar, size: size * 0.58, color: Colors.white),
         ),
         SizedBox(width: size * 0.38),
         Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:patchpilot_web/core/assets.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/models/models.dart';
@@ -340,6 +341,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const BrandImage(
+          asset: AppAssets.homeLogo,
+          height: 88,
+          semanticLabel: 'PatchPilot. From issue to impact.',
+        ),
+        const SizedBox(height: 22),
         Text(
           eyebrow,
           style: const TextStyle(
@@ -440,15 +447,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       children: [
         const Branding(size: 24),
-        const SizedBox(width: 10),
-        const Text(
-          'PatchPilot',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
-          ),
-        ),
         const SizedBox(width: 10),
         Container(
           width: 4,

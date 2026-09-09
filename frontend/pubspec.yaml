@@ -66,6 +66,9 @@ flutter:
 
   assets:
     - google_fonts/
+    - assets/favicon.png
+    - assets/home_screen_logo.png
+    - assets/issues_screen_logo.png
 
   fonts:
     - family: JetBrains Mono

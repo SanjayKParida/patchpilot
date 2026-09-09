@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:patchpilot_web/core/assets.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
 import 'package:patchpilot_web/models/models.dart';
@@ -181,6 +182,16 @@ class _IssuesScreenState extends State<IssuesScreen> {
               fileCount: _snapshotFileCount,
               error: _snapshotError,
               percent: _snapshotPercent,
+            ),
+            const SizedBox(height: 18),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: BrandImage(
+                asset: AppAssets.issuesLogo,
+                height: 168,
+                semanticLabel:
+                    'Your AI pair pilot from issue to pull request.',
+              ),
             ),
             const SizedBox(height: 18),
             Row(
