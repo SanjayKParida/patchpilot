@@ -471,3 +471,167 @@ def test_polling_analysis_response_does_not_leak_context(api_client):
     assert "context" not in body
     assert "slices" not in body
     assert body["diagnosis"]["root_cause"] == DIAGNOSIS["root_cause"]
+
+
+def test_files_endpoint_serves_ranked_sources(api_client):
+    client, store = api_client
+    record = store.create("owner", "repo", 1)
+    content = "class TaskBloc {}\n"
+
+    store.mark_completed(
+        record["id"],
+        {
+            "issue": ISSUE,
+            "signals": ANALYSIS["signals"],
+            "relevant_files": [],
+            "diagnosis": DIAGNOSIS,
+            "diagnosis_error": None,
+            "context_package": None,
+            "context_error": None,
+            "sources": {"lib/bloc/task_bloc.dart": content},
+            "snapshot": {},
+            "context": {},
+        },
+    )
+
+    response = client.get(
+        f"/api/analyses/{record['id']}/files",
+        params={"path": "lib/bloc/task_bloc.dart"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["path"] == "lib/bloc/task_bloc.dart"
+    assert body["content"] == content
+
+
+def test_files_endpoint_serves_context_package_path_from_snapshot(
+    api_client,
+):
+    """
+    Supporting ContextPackage files may sit outside ranked sources.
+    Opening them from Patch must still work via the existing /files API.
+    """
+
+    client, store = api_client
+    record = store.create("owner", "repo", 1)
+    supporting = "lib/domain/entities/task_filter.dart"
+    content = "class TaskFilter {}\n"
+
+    store.mark_completed(
+        record["id"],
+        {
+            "issue": ISSUE,
+            "signals": ANALYSIS["signals"],
+            "relevant_files": [],
+            "diagnosis": DIAGNOSIS,
+            "diagnosis_error": None,
+            "context_package": {
+                "adapter": "DartCodeIntelligence",
+                "language": "dart",
+                "budget": {
+                    "max_lines_total": 100,
+                    "lines_used": 1,
+                    "max_files": 12,
+                    "files_used": 1,
+                },
+                "warnings": [],
+                "omitted": [],
+                "files": [
+                    {
+                        "path": supporting,
+                        "total_lines": 1,
+                        "included_lines": 1,
+                        "complete": True,
+                    }
+                ],
+                "slices": [
+                    {
+                        "path": supporting,
+                        "start_line": 1,
+                        "end_line": 1,
+                        "tier": 1,
+                        "reason": "supporting declaration",
+                        "symbols": ["TaskFilter"],
+                        "content": content,
+                        "truncated": False,
+                        "language": "dart",
+                        "adapter": "DartCodeIntelligence",
+                    }
+                ],
+                "issue": ISSUE,
+                "diagnosis": DIAGNOSIS,
+                "root_cause": None,
+            },
+            "context_error": None,
+            "sources": {"lib/bloc/task_bloc.dart": "class TaskBloc {}\n"},
+            "snapshot": {
+                "lib/bloc/task_bloc.dart": "class TaskBloc {}\n",
+                supporting: content,
+                "README.md": "# secret\n",
+            },
+            "context": {},
+        },
+    )
+
+    response = client.get(
+        f"/api/analyses/{record['id']}/files",
+        params={"path": supporting},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["path"] == supporting
+    assert body["content"] == content
+
+
+def test_files_endpoint_rejects_snapshot_paths_outside_context(
+    api_client,
+):
+    client, store = api_client
+    record = store.create("owner", "repo", 1)
+
+    store.mark_completed(
+        record["id"],
+        {
+            "issue": ISSUE,
+            "signals": ANALYSIS["signals"],
+            "relevant_files": [],
+            "diagnosis": DIAGNOSIS,
+            "diagnosis_error": None,
+            "context_package": {
+                "adapter": "DartCodeIntelligence",
+                "language": "dart",
+                "budget": {
+                    "max_lines_total": 100,
+                    "lines_used": 0,
+                    "max_files": 12,
+                    "files_used": 0,
+                },
+                "warnings": [],
+                "omitted": [],
+                "files": [],
+                "slices": [],
+                "issue": ISSUE,
+                "diagnosis": DIAGNOSIS,
+                "root_cause": None,
+            },
+            "context_error": None,
+            "sources": {"lib/bloc/task_bloc.dart": "class TaskBloc {}\n"},
+            "snapshot": {
+                "lib/bloc/task_bloc.dart": "class TaskBloc {}\n",
+                "README.md": "# secret\n",
+            },
+            "context": {},
+        },
+    )
+
+    response = client.get(
+        f"/api/analyses/{record['id']}/files",
+        params={"path": "README.md"},
+    )
+
+    assert response.status_code == 404
+    assert "not among the files this analysis ranked" in response.json()[
+        "detail"
+    ]

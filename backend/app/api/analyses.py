@@ -570,6 +570,53 @@ def get_analysis_patch_delivery(
     return delivery.get_delivery(analysis_id).to_dict()
 
 
+def _context_package_paths(package):
+    """Paths the ContextPackage already admitted (slices + file rollup)."""
+
+    if not isinstance(package, dict):
+        return set()
+
+    paths = set()
+
+    for entry in package.get("slices") or []:
+        if isinstance(entry, dict):
+            path = entry.get("path")
+            if path:
+                paths.add(path)
+
+    for entry in package.get("files") or []:
+        if isinstance(entry, dict):
+            path = entry.get("path")
+            if path:
+                paths.add(path)
+
+    return paths
+
+
+def _analysis_file_content(record, path):
+    """
+    Resolve source for one client-openable analysis file.
+
+    Ranked `sources` cover Diagnosis navigation. ContextPackage can
+    also admit supporting files outside the ranked top-N; those are
+    served from the pinned snapshot only when the package already
+    includes them — never arbitrary repository paths.
+    """
+
+    sources = record.get("sources") or {}
+    if path in sources:
+        return sources[path]
+
+    if path not in _context_package_paths(record.get("context_package")):
+        return None
+
+    snapshot = record.get("snapshot") or {}
+    if path in snapshot:
+        return snapshot[path]
+
+    return None
+
+
 @analyses_router.get(
     "/{analysis_id}/files",
     response_model=FileSource,
@@ -585,18 +632,17 @@ def get_analysis_file(
     response is fetched repeatedly while an analysis runs, and a
     repository's source has no business being in it.
 
-    Only files the analysis actually ranked are available, so this
-    cannot be used to read arbitrary paths from the repository.
+    Openable paths are the analysis ranked sources, plus any file the
+    stored ContextPackage already admitted. Arbitrary repository paths
+    remain unavailable.
     """
 
-    sources = record.get("sources") or {}
+    content = _analysis_file_content(record, path)
 
-    if path not in sources:
+    if content is None:
         raise IssueNotFound(
             f"{path} is not among the files this analysis ranked"
         )
-
-    content = sources[path]
 
     return FileSource(
         path=path,
