@@ -62,9 +62,13 @@ class _PatchPanelState extends State<PatchPanel> {
   bool _approving = false;
   bool _delivering = false;
 
+  bool get _busy =>
+      _loadingCached || _loadingPatch || _validating || _approving || _delivering;
+
   @override
   void initState() {
     super.initState();
+    _scheduleNotify();
     _loadCached();
   }
 
@@ -73,6 +77,7 @@ class _PatchPanelState extends State<PatchPanel> {
     PatchValidationResult? validation;
     PatchApproval? approval;
     PatchDelivery? delivery;
+    String? error;
 
     try {
       proposal = await widget.api.getPatch(widget.analysisId);
@@ -80,8 +85,7 @@ class _PatchPanelState extends State<PatchPanel> {
       if (e.statusCode == 409) {
         // Generation is still running; do not treat this as a missing artifact.
       } else if (!_isMissingArtifact(e)) {
-        if (mounted) setState(() => _error = e.message);
-        return;
+        error = e.message;
       }
     }
 
@@ -89,10 +93,7 @@ class _PatchPanelState extends State<PatchPanel> {
       try {
         validation = await widget.api.getPatchValidation(widget.analysisId);
       } on ApiException catch (e) {
-        if (!_isMissingArtifact(e)) {
-          if (mounted) setState(() => _error = e.message);
-          return;
-        }
+        if (!_isMissingArtifact(e)) error ??= e.message;
       }
     }
 
@@ -100,10 +101,7 @@ class _PatchPanelState extends State<PatchPanel> {
       try {
         approval = await widget.api.getPatchApproval(widget.analysisId);
       } on ApiException catch (e) {
-        if (!_isMissingArtifact(e)) {
-          if (mounted) setState(() => _error = e.message);
-          return;
-        }
+        if (!_isMissingArtifact(e)) error ??= e.message;
       }
     }
 
@@ -111,10 +109,7 @@ class _PatchPanelState extends State<PatchPanel> {
       try {
         delivery = await widget.api.getPatchDelivery(widget.analysisId);
       } on ApiException catch (e) {
-        if (!_isMissingArtifact(e)) {
-          if (mounted) setState(() => _error = e.message);
-          return;
-        }
+        if (!_isMissingArtifact(e)) error ??= e.message;
       }
     }
 
@@ -124,6 +119,7 @@ class _PatchPanelState extends State<PatchPanel> {
       _validation = validation;
       _approval = approval;
       _delivery = delivery;
+      _error = error;
       _loadingCached = false;
     });
     _scheduleNotify();
@@ -136,7 +132,7 @@ class _PatchPanelState extends State<PatchPanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       onArtifacts?.call(_proposal, _validation, _approval, _delivery);
-      onBusy?.call(_loadingPatch || _validating || _approving || _delivering);
+      onBusy?.call(_busy);
     });
   }
 

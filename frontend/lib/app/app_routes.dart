@@ -6,6 +6,7 @@ import 'package:patchpilot_web/models/models.dart';
 /// GoRouter owns history; these strings are the only URL contract.
 abstract final class AppRoutes {
   static const dashboard = '/';
+  static const appTitle = 'PatchPilot';
 
   static String issues(String owner, String repo) => '/r/$owner/$repo';
 
@@ -40,6 +41,13 @@ abstract final class AppRoutes {
   }
 
   static RepairStage stageFrom(String? segment) {
+    return knownStageFrom(segment) ?? RepairStage.diagnosis;
+  }
+
+  /// Known repair URL segments only. Unknown values are null so callers
+  /// such as the document title can fall back instead of assuming
+  /// diagnosis.
+  static RepairStage? knownStageFrom(String? segment) {
     switch ((segment ?? '').trim().toLowerCase()) {
       case 'patch':
       case 'context':
@@ -50,9 +58,28 @@ abstract final class AppRoutes {
         return RepairStage.review;
       case 'pull-request':
         return RepairStage.pullRequest;
-      default:
+      case 'diagnosis':
         return RepairStage.diagnosis;
+      default:
+        return null;
     }
+  }
+
+  /// Browser tab title for the current GoRouter location.
+  static String documentTitle(Uri? location) {
+    final path = location?.path ?? '';
+    final normalized = path.isEmpty ? dashboard : path;
+    if (normalized == dashboard) return appTitle;
+
+    final parts = normalized.split('/').where((part) => part.isNotEmpty).toList();
+    if (parts.length == 3 && parts[0] == 'r') {
+      return 'Issues · $appTitle';
+    }
+    if (parts.length >= 6 && parts[0] == 'r' && parts[3] == 'issues') {
+      final stage = knownStageFrom(parts[5]);
+      if (stage != null) return '${stage.label} · $appTitle';
+    }
+    return appTitle;
   }
 
   static Repository repositoryFromPath(String owner, String repo) {

@@ -287,7 +287,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     if (!_authReady) {
       return MaterialApp(
-        title: 'PatchPilot',
+        title: AppRoutes.appTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.build(),
         home: const Scaffold(
@@ -298,12 +298,21 @@ class _AppShellState extends State<AppShell> {
     }
 
     _router ??= _createRouter();
+    final router = _router!;
 
-    return MaterialApp.router(
-      title: 'PatchPilot',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(),
-      routerConfig: _router,
+    return ListenableBuilder(
+      listenable: router.routeInformationProvider,
+      builder: (context, _) {
+        return MaterialApp.router(
+          title: AppRoutes.appTitle,
+          onGenerateTitle: (_) => AppRoutes.documentTitle(
+            router.routeInformationProvider.value.uri,
+          ),
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.build(),
+          routerConfig: router,
+        );
+      },
     );
   }
 }

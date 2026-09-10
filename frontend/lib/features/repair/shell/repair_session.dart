@@ -390,10 +390,7 @@ class _RepairSessionState extends State<RepairSession> {
       _stage = stage;
       _inspectedSlice = null;
       _showInspector = false;
-      if (stage == RepairStage.patch) _openedPatch = true;
-      if (stage == RepairStage.validation) _openedValidation = true;
-      if (stage == RepairStage.review) _openedReview = true;
-      if (stage == RepairStage.pullRequest) _openedPullRequest = true;
+      _markStageOpened(stage);
     });
     widget.onStageCommitted?.call(stage);
   }
@@ -416,8 +413,19 @@ class _RepairSessionState extends State<RepairSession> {
     _stage = stage;
     _inspectedSlice = null;
     _showInspector = false;
-    if (stage == RepairStage.patch) _openedPatch = true;
-    if (stage == RepairStage.validation) _openedValidation = true;
+    _markStageOpened(stage);
+  }
+
+  void _markStageOpened(RepairStage stage) {
+    if (stage == RepairStage.patch) {
+      // Cached GET / generate is in flight until PatchPanel reports.
+      if (!_openedPatch) _patchBusy = true;
+      _openedPatch = true;
+    }
+    if (stage == RepairStage.validation) {
+      if (!_openedValidation) _validating = true;
+      _openedValidation = true;
+    }
     if (stage == RepairStage.review) _openedReview = true;
     if (stage == RepairStage.pullRequest) _openedPullRequest = true;
   }
@@ -451,28 +459,35 @@ class _RepairSessionState extends State<RepairSession> {
     return _workflowStages[index + 1];
   }
 
+  /// Continue is enabled only when this stage's required work is
+  /// finished successfully. In-flight loads must not be inferred from
+  /// a single non-null artifact.
   bool get _currentStageSuccessfullyComplete {
-    if (_workflowBusy) return false;
-
     switch (_stage) {
       case RepairStage.diagnosis:
-        if (_statusBarLoading) return false;
-        final analysis = _analysis;
-        if (analysis == null) return false;
-        if (analysis.status == AnalysisStatus.failed) return false;
+        if (_diagnosisInFlight) return false;
         return _diagnosisReady;
       case RepairStage.patch:
+        if (_patchBusy) return false;
         return _patchReady;
       case RepairStage.validation:
+        if (_validating) return false;
         return _validationPassed;
       case RepairStage.review:
+        if (_approving) return false;
         return _reviewApproved;
       case RepairStage.pullRequest:
-        return false;
       case RepairStage.issue:
       case RepairStage.context:
         return false;
     }
+  }
+
+  bool get _diagnosisInFlight {
+    if (_error != null && _analysis == null) return false;
+    final analysis = _analysis;
+    if (analysis == null) return true;
+    return !analysis.isTerminal;
   }
 
   bool get _showContinue {

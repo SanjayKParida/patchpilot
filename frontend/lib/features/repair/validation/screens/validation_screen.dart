@@ -99,7 +99,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
     return error.statusCode == 502 || error.statusCode == 404;
   }
 
-  void _emit() {
+  void _emit({bool fetching = false}) {
     final onProposal = widget.onProposalChanged;
     final onValidation = widget.onValidationChanged;
     final onRunning = widget.onRunningChanged;
@@ -107,7 +107,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
       if (!mounted) return;
       onProposal?.call(_proposal);
       onValidation?.call(_result);
-      onRunning?.call(_running);
+      onRunning?.call(fetching || _loading || _running);
     });
   }
 
@@ -116,6 +116,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
       _loading = _proposal == null && _result == null;
       _error = null;
     });
+    _emit(fetching: true);
 
     PatchProposal? proposal;
     PatchValidationResult? result;
