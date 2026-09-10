@@ -341,6 +341,52 @@ class AnalysisStore:
 
         self._update(analysis_id, patch_delivery=payload)
 
+    def adopt_anonymous(self, analysis_id, user_id):
+        """
+        Assign an unowned analysis to user_id.
+
+        Missing IDs return None. An analysis already owned by this
+        user, or by anyone else, is left unchanged. The record is not
+        copied; only user_id (and the existing issue index) move.
+        """
+
+        token = (analysis_id or "").strip()
+        owner_id = (user_id or "").strip()
+        if not token or not owner_id:
+            return None
+
+        with self._lock:
+            record = self._load(token)
+            if record is None:
+                return None
+
+            current = record.get("user_id") or None
+            if current:
+                return json.loads(json.dumps(record))
+
+            repository = record.get("repository") or {}
+            old_key = self._issue_key(
+                repository.get("owner"),
+                repository.get("repo"),
+                record.get("issue_number"),
+                None,
+            )
+            record["user_id"] = owner_id
+            new_key = self._issue_key(
+                repository.get("owner"),
+                repository.get("repo"),
+                record.get("issue_number"),
+                owner_id,
+            )
+            self._save(record)
+            if old_key != new_key:
+                def reindex():
+                    self._redis.lrem(old_key, 0, token)
+                    self._redis.lpush(new_key, token)
+
+                self._redis_call(reindex)
+            return json.loads(json.dumps(record))
+
     def invalidate(self, analysis_id):
         """Remove a job and its lookup indexes."""
 

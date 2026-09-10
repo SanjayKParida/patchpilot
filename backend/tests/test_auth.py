@@ -66,9 +66,15 @@ def auth_env():
     auth_store = AuthStore(session_ttl_seconds=settings.session_ttl_seconds)
     github_app = FakeGitHubAppClient()
     resume_store = OAuthResumeStore(redis_client=MemoryRedis())
-    auth = AuthService(auth_store, github_app, settings, resume_store=resume_store)
-    access = RepositoryAccess(auth_store, settings, github_app)
     analyses = AnalysisStore()
+    auth = AuthService(
+        auth_store,
+        github_app,
+        settings,
+        resume_store=resume_store,
+        analysis_store=analyses,
+    )
+    access = RepositoryAccess(auth_store, settings, github_app)
     github = FakeGithub()
     writer = FakeGithubWriteClient()
     delivery = PatchDeliveryService(analyses, github, writer)

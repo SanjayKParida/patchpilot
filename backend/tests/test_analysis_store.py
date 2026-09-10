@@ -171,3 +171,54 @@ def test_eviction_drops_oldest():
     assert store.get(second["id"])["issue_number"] == 2
     assert store.get(third["id"])["issue_number"] == 3
     assert store.find_reusable("o", "r", 1) is None
+
+
+def test_adopt_anonymous_assigns_owner_and_keeps_payload():
+    store = _store()
+    created = store.create("o", "r", 3)
+    store.mark_completed(
+        created["id"],
+        {
+            "diagnosis": {"root_cause": "filter inverted"},
+            "patch_proposal": {"status": "ok", "files": []},
+            "patch_validation": {"status": "passed"},
+            "patch_approved": True,
+            "patch_delivery": {"status": "succeeded", "pr_number": 12},
+        },
+    )
+    before = store.get(created["id"])
+
+    adopted = store.adopt_anonymous(created["id"], "user-xyz")
+
+    assert adopted["id"] == created["id"]
+    assert adopted["user_id"] == "user-xyz"
+    fetched = store.get(created["id"])
+    assert fetched["user_id"] == "user-xyz"
+    assert fetched["diagnosis"] == before["diagnosis"]
+    assert fetched["patch_proposal"] == before["patch_proposal"]
+    assert fetched["patch_validation"] == before["patch_validation"]
+    assert fetched["patch_approved"] is True
+    assert fetched["patch_delivery"] == before["patch_delivery"]
+    assert store.find_reusable("o", "r", 3, user_id="user-xyz")["id"] == created["id"]
+    assert store.find_reusable("o", "r", 3) is None
+
+
+def test_adopt_anonymous_leaves_owned_and_foreign_records():
+    store = _store()
+    mine = store.create("o", "r", 3, user_id="alice")
+    theirs = store.create("o", "r", 4, user_id="bob")
+
+    same = store.adopt_anonymous(mine["id"], "alice")
+    foreign = store.adopt_anonymous(theirs["id"], "alice")
+
+    assert same["user_id"] == "alice"
+    assert foreign["user_id"] == "bob"
+    assert store.get(mine["id"])["user_id"] == "alice"
+    assert store.get(theirs["id"])["user_id"] == "bob"
+
+
+def test_adopt_anonymous_missing_returns_none():
+    store = _store()
+    assert store.adopt_anonymous("missing", "user-xyz") is None
+    assert store.adopt_anonymous("", "user-xyz") is None
+    assert store.adopt_anonymous("id", "") is None

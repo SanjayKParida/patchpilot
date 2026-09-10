@@ -12,6 +12,7 @@ from app.domain.auth import (
     permissions_allow_write,
 )
 from app.errors import (
+    AnalysisNotFound,
     AnalysisStoreUnavailable,
     AuthorizationFailed,
     InvalidOAuthState,
@@ -21,11 +22,19 @@ from app.infrastructure.github_app_client import pkce_pair
 
 
 class AuthService:
-    def __init__(self, store, github_app, settings, resume_store=None):
+    def __init__(
+        self,
+        store,
+        github_app,
+        settings,
+        resume_store=None,
+        analysis_store=None,
+    ):
         self.store = store
         self.github_app = github_app
         self.settings = settings
         self.resume_store = resume_store
+        self.analysis_store = analysis_store
 
     def current_user(self, session_id):
         session = self.store.get_valid_session(session_id)
@@ -98,6 +107,7 @@ class AuthService:
         self.refresh_repositories(user)
         session = self.store.create_session(user.id)
         resume = self._consume_resume(record.resume_id)
+        self._adopt_resumed_analysis(user, resume)
         return session, user, self._login_return_to(record, resume)
 
     def start_install(self, return_to, session_id):
@@ -207,6 +217,17 @@ class AuthService:
             return self.resume_store.consume(resume_id)
         except AnalysisStoreUnavailable:
             return None
+
+    def _adopt_resumed_analysis(self, user, resume):
+        if self.analysis_store is None or not resume or user is None:
+            return
+        analysis_id = (resume.get("analysis_id") or "").strip()
+        if not analysis_id:
+            return
+        try:
+            self.analysis_store.adopt_anonymous(analysis_id, user.id)
+        except (AnalysisNotFound, AnalysisStoreUnavailable):
+            return
 
     def _login_return_to(self, record, resume):
         current = record.return_to

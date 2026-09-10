@@ -136,6 +136,7 @@ def get_auth_service():
         github_app=get_github_app_client(),
         settings=get_settings(),
         resume_store=get_oauth_resume_store(),
+        analysis_store=get_analysis_store(),
     )
 
 
