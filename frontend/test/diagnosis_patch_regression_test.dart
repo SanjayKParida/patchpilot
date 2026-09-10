@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:patchpilot_web/app/app_routes.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
 import 'package:patchpilot_web/features/repair/context/screens/context_screen.dart';
@@ -359,9 +360,16 @@ Future<void> _pumpSessionWithApi(
   GithubRedirect? redirect,
   Repository repository = _repo,
   ValueNotifier<AuthUser?>? session,
-  Future<void> Function({String? analysisId, String? stage})? onConnectGithub,
+  Future<void> Function({
+    String? analysisId,
+    String? stage,
+    String? repairPath,
+  })?
+  onConnectGithub,
   RepairStage? requestedStage,
   String? resumeAnalysisId,
+  String? ref,
+  VoidCallback? onBack,
 }) async {
   tester.view.physicalSize = const Size(1200, 2400);
   tester.view.devicePixelRatio = 1.0;
@@ -376,12 +384,13 @@ Future<void> _pumpSessionWithApi(
         cache: cache,
         repository: repository,
         issue: _issue,
+        ref: ref,
         redirect: redirect,
         session: session,
         onConnectGithub: onConnectGithub,
         requestedStage: requestedStage,
         resumeAnalysisId: resumeAnalysisId,
-        onBack: () {},
+        onBack: onBack ?? () {},
       ),
     ),
   );
@@ -983,7 +992,66 @@ void main() {
     expect(find.text('Pull request #12 created'), findsOneWidget);
   });
 
-  testWidgets('anonymous demo shows Connect GitHub instead of Create PR', (
+  testWidgets('demo repository PR stage is a completed demo, not a failure', (
+    tester,
+  ) async {
+    var connectCalls = 0;
+    var deliverCalls = 0;
+    var backCalls = 0;
+    final session = ValueNotifier<AuthUser?>(
+      const AuthUser(id: 'u1', githubId: 1, githubLogin: 'octocat'),
+    );
+    addTearDown(session.dispose);
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_demoRepo.owner, _demoRepo.repo, _issue.number),
+      _completedAnalysis(),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      _artifactApi(
+        approved: true,
+        onDeliver: () => deliverCalls += 1,
+      ),
+      repository: _demoRepo,
+      session: session,
+      onConnectGithub: ({analysisId, stage, repairPath}) async =>
+          connectCalls += 1,
+      onBack: () => backCalls += 1,
+    );
+
+    await tester.tap(find.text('Pull Request'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Repair complete'), findsOneWidget);
+    expect(
+      find.text(
+        'Diagnosis, patch, validation, and review finished. This is a demo repository, so a GitHub pull request cannot be opened here.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Passed'), findsWidgets);
+    expect(find.text('Approved'), findsWidgets);
+    expect(find.text('Return to issues'), findsOneWidget);
+    expect(find.text('Create pull request'), findsNothing);
+    expect(find.text('Connect GitHub →'), findsNothing);
+    expect(find.text('Pull request creation failed'), findsNothing);
+    expect(
+      find.textContaining('cannot create branches or pull requests'),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Return to issues'));
+    await tester.pump();
+
+    expect(backCalls, 1);
+    expect(deliverCalls, 0);
+    expect(connectCalls, 0);
+  });
+
+  testWidgets('anonymous demo PR stage asks to connect GitHub, not create a PR', (
     tester,
   ) async {
     var connectCalls = 0;
@@ -999,31 +1067,70 @@ void main() {
       cache,
       _artifactApi(approved: true, onDeliver: () => deliverCalls += 1),
       repository: _demoRepo,
-      onConnectGithub: ({analysisId, stage}) async => connectCalls += 1,
+      onConnectGithub: ({analysisId, stage, repairPath}) async =>
+          connectCalls += 1,
     );
 
     await tester.tap(find.text('Pull Request'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Connect GitHub to create this pull request'),
-      findsOneWidget,
-    );
-    expect(
-      find.text(
-        'PatchPilot can analyze and validate this demo issue without GitHub access. Creating a pull request requires a GitHub account with write access to the repository.',
-      ),
-      findsOneWidget,
-    );
     expect(find.text('Connect GitHub →'), findsOneWidget);
+    expect(find.text('Repair complete'), findsNothing);
     expect(find.text('Create pull request'), findsNothing);
-
-    await tester.tap(find.text('Connect GitHub →'));
-    await tester.pump();
-
-    expect(connectCalls, 1);
+    expect(find.text('Pull request creation failed'), findsNothing);
+    expect(connectCalls, 0);
     expect(deliverCalls, 0);
   });
+
+  testWidgets(
+    'Pull Request Connect GitHub supplies the RepairSession repairPath',
+    (tester) async {
+      String? capturedId;
+      String? capturedStage;
+      String? capturedPath;
+      final cache = AnalysisCache();
+      cache.save(
+        AnalysisCache.keyFor(
+          _demoRepo.owner,
+          _demoRepo.repo,
+          _issue.number,
+          ref: 'deadbeef',
+        ),
+        _completedAnalysis(),
+      );
+
+      await _pumpSessionWithApi(
+        tester,
+        cache,
+        _artifactApi(approved: true),
+        repository: _demoRepo,
+        ref: 'deadbeef',
+        onConnectGithub: ({analysisId, stage, repairPath}) async {
+          capturedId = analysisId;
+          capturedStage = stage;
+          capturedPath = repairPath;
+        },
+      );
+
+      await tester.tap(find.text('Pull Request'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connect GitHub →'));
+      await tester.pump();
+
+      expect(capturedId, 'a1');
+      expect(capturedStage, 'pull-request');
+      expect(
+        capturedPath,
+        AppRoutes.repair(
+          owner: _demoRepo.owner,
+          repo: _demoRepo.repo,
+          number: _issue.number,
+          stage: RepairStage.pullRequest,
+          ref: 'deadbeef',
+        ),
+      );
+    },
+  );
 
   testWidgets('cache-first diagnosis is unchanged when there is no resume', (
     tester,

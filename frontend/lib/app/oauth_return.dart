@@ -41,6 +41,52 @@ String? oauthRepairPath(Uri? route) {
   return '$path?${route.query}';
 }
 
+/// Prefer an explicit RepairSession path over the current router URI.
+String? oauthResolvedRepairPath(String? repairPath, Uri? route) {
+  if (repairPath != null && repairPath.isNotEmpty) return repairPath;
+  return oauthRepairPath(route);
+}
+
+/// Query values [AppShell] sends to `startGithubLogin`.
+class OauthGithubLogin {
+  final String? returnTo;
+  final String? analysisId;
+  final String? stage;
+  final String? repairPath;
+
+  const OauthGithubLogin({
+    this.returnTo,
+    this.analysisId,
+    this.stage,
+    this.repairPath,
+  });
+}
+
+/// Resolves OAuth login args, preferring an explicit repair path over `/`.
+OauthGithubLogin oauthGithubLogin({
+  required Uri page,
+  Uri? route,
+  String? analysisId,
+  String? stage,
+  String? repairPath,
+}) {
+  final resolvedId = analysisId ?? oauthAnalysisId(route);
+  final resolvedPath = oauthResolvedRepairPath(repairPath, route);
+  final resolvedRoute = (resolvedPath != null && resolvedPath.isNotEmpty)
+      ? Uri.parse(resolvedPath)
+      : route;
+  return OauthGithubLogin(
+    returnTo: oauthReturnTo(
+      page: page,
+      route: resolvedRoute,
+      analysisId: resolvedId,
+    ),
+    analysisId: resolvedId,
+    stage: stage ?? oauthStage(resolvedRoute ?? route),
+    repairPath: resolvedPath,
+  );
+}
+
 String? oauthAnalysisId(Uri? route) {
   final id = route?.queryParameters['analysis_id']?.trim();
   if (id == null || id.isEmpty) return null;

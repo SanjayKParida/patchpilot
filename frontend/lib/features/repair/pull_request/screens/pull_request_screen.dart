@@ -14,6 +14,9 @@ class PullRequestScreen extends StatefulWidget {
   /// Anonymous demo users must connect GitHub before Create PR.
   final bool needsGithubConnect;
 
+  /// Demo repositories cannot open a GitHub pull request.
+  final bool isDemo;
+
   final Future<void> Function()? onConnectGithub;
 
   /// Called with the current title and description.
@@ -33,6 +36,7 @@ class PullRequestScreen extends StatefulWidget {
     required this.onCreatePr,
     required this.onRetry,
     this.needsGithubConnect = false,
+    this.isDemo = false,
     this.onConnectGithub,
     this.onViewPr,
     this.onReturnToIssues,
@@ -91,6 +95,13 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
       return PullRequestCreatedView(
         state: state,
         onViewPr: state.prUrl != null ? widget.onViewPr : null,
+        onReturnToIssues: widget.onReturnToIssues,
+      );
+    }
+
+    if (widget.isDemo && !widget.needsGithubConnect) {
+      return PullRequestDemoCompleteView(
+        state: state,
         onReturnToIssues: widget.onReturnToIssues,
       );
     }

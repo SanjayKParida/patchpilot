@@ -378,6 +378,101 @@ class PullRequestCreatedView extends StatelessWidget {
   }
 }
 
+class PullRequestDemoCompleteView extends StatelessWidget {
+  final PullRequestState state;
+  final VoidCallback? onReturnToIssues;
+
+  const PullRequestDemoCompleteView({
+    super.key,
+    required this.state,
+    this.onReturnToIssues,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              size: 20,
+              color: AppTheme.success,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Repair complete',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.text,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Diagnosis, patch, validation, and review finished. This is a demo repository, so a GitHub pull request cannot be opened here.',
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.45,
+            color: AppTheme.textMuted,
+          ),
+        ),
+        const SizedBox(height: 20),
+        PullRequestMetadata(
+          repository: state.repository,
+          baseBranch: state.baseBranch,
+          headBranch: state.headBranch,
+          filesChanged: state.filesChanged,
+          validationPassed: state.validationPassed,
+          reviewApproved: state.reviewApproved,
+        ),
+        if (onReturnToIssues != null) ...[
+          const SizedBox(height: 32),
+          const Divider(height: 1, color: AppTheme.borderSubtle),
+          const SizedBox(height: 20),
+          const Text(
+            'Want to work on another issue?',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.text,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: onReturnToIssues,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: const Size(0, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Return to issues'),
+                SizedBox(width: 8),
+                Icon(Icons.arrow_forward, size: 16),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class PullRequestFailureView extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onRetry;

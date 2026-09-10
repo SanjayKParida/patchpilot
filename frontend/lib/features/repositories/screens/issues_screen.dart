@@ -177,7 +177,7 @@ class _IssuesScreenState extends State<IssuesScreen> {
                 repository: widget.repository,
                 onBack: widget.onBack,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.section),
               SnapshotStatus(
                 status: _snapshotStatus,
                 sha: _snapshotSha,
@@ -185,7 +185,7 @@ class _IssuesScreenState extends State<IssuesScreen> {
                 error: _snapshotError,
                 percent: _snapshotPercent,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.section),
               Row(
                 children: [
                   Text(

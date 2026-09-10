@@ -55,6 +55,70 @@ void main() {
     );
   });
 
+  test('oauthResolvedRepairPath prefers an explicit path over /', () {
+    const repairPath = '/r/owner/repo/issues/1/pull-request?ref=abc';
+    expect(
+      oauthResolvedRepairPath(repairPath, Uri.parse('/')),
+      repairPath,
+    );
+    expect(oauthResolvedRepairPath(null, Uri.parse('/')), isNull);
+    expect(oauthResolvedRepairPath('', Uri.parse('/')), isNull);
+    expect(
+      oauthResolvedRepairPath(
+        null,
+        Uri.parse('/r/owner/repo/issues/1/diagnosis'),
+      ),
+      '/r/owner/repo/issues/1/diagnosis',
+    );
+  });
+
+  test('oauthGithubLogin prefers explicit repairPath over a dashboard route', () {
+    final login = oauthGithubLogin(
+      page: Uri.parse('http://localhost:59738/'),
+      route: Uri.parse('/'),
+      analysisId: 'a1',
+      stage: 'pull-request',
+      repairPath: '/r/owner/repo/issues/1/pull-request?ref=abc',
+    );
+
+    expect(
+      login.repairPath,
+      '/r/owner/repo/issues/1/pull-request?ref=abc',
+    );
+    expect(login.analysisId, 'a1');
+    expect(login.stage, 'pull-request');
+    final returnTo = Uri.parse(login.returnTo!);
+    expect(returnTo.path, '/r/owner/repo/issues/1/pull-request');
+    expect(returnTo.queryParameters['analysis_id'], 'a1');
+    expect(returnTo.queryParameters['ref'], 'abc');
+  });
+
+  test('oauthGithubLogin without repairPath stays on the dashboard', () {
+    final login = oauthGithubLogin(
+      page: Uri.parse('http://localhost:59738/'),
+      route: Uri.parse('/'),
+    );
+
+    expect(login.repairPath, isNull);
+    expect(login.analysisId, isNull);
+    expect(login.stage, isNull);
+    expect(login.returnTo, 'http://localhost:59738/');
+  });
+
+  test('oauthGithubLogin still forwards analysisId and stage from the route', () {
+    final login = oauthGithubLogin(
+      page: Uri.parse('http://localhost:59738/'),
+      route: Uri.parse('/r/owner/repo/issues/1/diagnosis?analysis_id=a1'),
+    );
+
+    expect(login.analysisId, 'a1');
+    expect(login.stage, 'diagnosis');
+    expect(
+      login.repairPath,
+      '/r/owner/repo/issues/1/diagnosis?analysis_id=a1',
+    );
+  });
+
   test('oauthStage reads the repair URL segment', () {
     expect(
       oauthStage(Uri.parse('/r/owner/repo/issues/1/pull-request')),

@@ -83,18 +83,23 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  Future<void> _connectGithub({String? analysisId, String? stage}) async {
-    final route = _router?.routeInformationProvider.value.uri;
-    final resolvedId = analysisId ?? oauthAnalysisId(route);
+  Future<void> _connectGithub({
+    String? analysisId,
+    String? stage,
+    String? repairPath,
+  }) async {
+    final login = oauthGithubLogin(
+      page: Uri.base,
+      route: _router?.routeInformationProvider.value.uri,
+      analysisId: analysisId,
+      stage: stage,
+      repairPath: repairPath,
+    );
     final url = await _api.startGithubLogin(
-      returnTo: oauthReturnTo(
-        page: Uri.base,
-        route: route,
-        analysisId: resolvedId,
-      ),
-      analysisId: resolvedId,
-      stage: stage ?? oauthStage(route),
-      repairPath: oauthRepairPath(route),
+      returnTo: login.returnTo,
+      analysisId: login.analysisId,
+      stage: login.stage,
+      repairPath: login.repairPath,
     );
     if (url.isEmpty) {
       throw const ApiException('GitHub did not return an authorization URL.');

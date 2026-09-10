@@ -39,7 +39,11 @@ class RepairSession extends StatefulWidget {
   final VoidCallback onBack;
   final GithubRedirect? redirect;
   final ValueNotifier<AuthUser?>? session;
-  final Future<void> Function({String? analysisId, String? stage})?
+  final Future<void> Function({
+    String? analysisId,
+    String? stage,
+    String? repairPath,
+  })?
   onConnectGithub;
   final RepairStage? requestedStage;
   final String? resumeAnalysisId;
@@ -835,11 +839,19 @@ class _RepairSessionState extends State<RepairSession> {
                   key: ValueKey('pr-$id'),
                   state: _pullRequestState,
                   needsGithubConnect: _needsGithubConnect,
+                  isDemo: widget.repository.demo,
                   onConnectGithub: widget.onConnectGithub == null
                       ? null
                       : () => widget.onConnectGithub!(
                           analysisId: analysisId,
                           stage: AppRoutes.segmentFor(_stage),
+                          repairPath: AppRoutes.repair(
+                            owner: widget.repository.owner,
+                            repo: widget.repository.repo,
+                            number: widget.issue.number,
+                            stage: _stage,
+                            ref: widget.ref,
+                          ),
                         ),
                   onCreatePr: (title, description) {
                     _createDraftPr(title: title, description: description);

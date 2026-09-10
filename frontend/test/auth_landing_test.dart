@@ -207,6 +207,7 @@ void main() {
 
   testWidgets('Connect GitHub starts the authorization URL', (tester) async {
     final redirect = _Redirect();
+    Uri? loginUri;
     final api = _client((request) async {
       if (request.url.path.endsWith('/auth/me')) {
         return _json({'authenticated': false, 'user': null});
@@ -215,6 +216,7 @@ void main() {
         return _json(_demo);
       }
       if (request.url.path.endsWith('/auth/github/login')) {
+        loginUri = request.url;
         return _json({
           'authorization_url':
               'https://github.com/login/oauth/authorize?client_id=iv1.test',
@@ -234,6 +236,10 @@ void main() {
       redirect.url,
       'https://github.com/login/oauth/authorize?client_id=iv1.test',
     );
+    expect(loginUri, isNotNull);
+    expect(loginUri!.queryParameters.containsKey('repair_path'), isFalse);
+    expect(loginUri!.queryParameters.containsKey('analysis_id'), isFalse);
+    expect(loginUri!.queryParameters.containsKey('stage'), isFalse);
   });
 
   testWidgets('logout returns to the unauthenticated landing', (tester) async {
