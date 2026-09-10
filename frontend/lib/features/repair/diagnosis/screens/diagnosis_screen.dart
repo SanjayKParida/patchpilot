@@ -29,6 +29,7 @@ class DiagnosisScreen extends StatefulWidget {
   final Repository repository;
   final Issue issue;
   final String? ref;
+  final String? resumeAnalysisId;
   final VoidCallback onBack;
   final void Function(Analysis? analysis, String? error, bool fromCache)?
   onSessionUpdate;
@@ -41,6 +42,7 @@ class DiagnosisScreen extends StatefulWidget {
     required this.issue,
     required this.onBack,
     this.ref,
+    this.resumeAnalysisId,
     this.onSessionUpdate,
   });
 
@@ -68,6 +70,12 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
   @override
   void initState() {
     super.initState();
+
+    final resumeId = widget.resumeAnalysisId?.trim();
+    if (resumeId != null && resumeId.isNotEmpty) {
+      _resume(resumeId);
+      return;
+    }
 
     final cached = widget.cache.read(_cacheKey);
 
@@ -99,7 +107,43 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
     widget.cache.invalidate(_cacheKey);
     setState(() => _fromCache = false);
     _emitSession();
-    await _start();
+    await _start(force: true);
+  }
+
+  Future<void> _resume(String id) async {
+    await _subscription?.cancel();
+
+    try {
+      final analysis = await widget.api.getAnalysis(id);
+      if (!mounted) return;
+      setState(() {
+        _analysis = analysis;
+        _fromCache = analysis.isTerminal;
+        _error = null;
+      });
+      widget.cache.save(_cacheKey, analysis);
+      _emitSession();
+      if (analysis.isTerminal) return;
+
+      _subscription = widget.api
+          .watchAnalysis(analysis.id)
+          .listen(
+            (next) {
+              if (!mounted) return;
+              setState(() => _analysis = next);
+              widget.cache.save(_cacheKey, next);
+              _emitSession();
+            },
+            onError: (Object e) {
+              if (!mounted) return;
+              setState(() => _error = e.toString());
+              _emitSession();
+            },
+          );
+    } on ApiException {
+      if (!mounted) return;
+      await _start();
+    }
   }
 
   @override
@@ -108,7 +152,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
     super.dispose();
   }
 
-  Future<void> _start() async {
+  Future<void> _start({bool force = false}) async {
     setState(() {
       _analysis = null;
       _error = null;
@@ -123,11 +167,19 @@ class _DiagnosisScreenState extends State<DiagnosisScreen> {
         repo: widget.repository.repo,
         issueNumber: widget.issue.number,
         ref: widget.ref,
+        force: force,
       );
 
       if (!mounted) return;
-      setState(() => _analysis = created);
+      final reused = !force && created.isTerminal;
+      setState(() {
+        _analysis = created;
+        _fromCache = reused;
+      });
+      widget.cache.save(_cacheKey, created);
       _emitSession();
+
+      if (created.isTerminal) return;
 
       _subscription = widget.api
           .watchAnalysis(created.id)

@@ -103,7 +103,15 @@ class AuthStore:
         with self._lock:
             self._sessions.pop(session_id, None)
 
-    def put_oauth_state(self, *, code_verifier, return_to, user_id=None, ttl_seconds=600):
+    def put_oauth_state(
+        self,
+        *,
+        code_verifier,
+        return_to,
+        user_id=None,
+        ttl_seconds=600,
+        resume_id=None,
+    ):
         now = _now()
         record = OAuthState(
             state=uuid.uuid4().hex,
@@ -111,6 +119,7 @@ class AuthStore:
             return_to=return_to,
             expires_at=(now + timedelta(seconds=ttl_seconds)).isoformat(),
             user_id=user_id,
+            resume_id=resume_id,
         )
         with self._lock:
             self._oauth[record.state] = record

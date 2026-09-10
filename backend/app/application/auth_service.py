@@ -4,7 +4,7 @@ GitHub App login, session, and authorized-repository listing.
 Does not fetch repository source or open pull requests.
 """
 
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.domain.auth import (
     AuthorizedRepository,
@@ -12,6 +12,7 @@ from app.domain.auth import (
     permissions_allow_write,
 )
 from app.errors import (
+    AnalysisStoreUnavailable,
     AuthorizationFailed,
     InvalidOAuthState,
     NotAuthenticated,
@@ -20,10 +21,11 @@ from app.infrastructure.github_app_client import pkce_pair
 
 
 class AuthService:
-    def __init__(self, store, github_app, settings):
+    def __init__(self, store, github_app, settings, resume_store=None):
         self.store = store
         self.github_app = github_app
         self.settings = settings
+        self.resume_store = resume_store
 
     def current_user(self, session_id):
         session = self.store.get_valid_session(session_id)
@@ -31,17 +33,33 @@ class AuthService:
             return None
         return self.store.get_user(session.user_id)
 
-    def start_login(self, return_to, user_id=None):
+    def start_login(
+        self,
+        return_to,
+        user_id=None,
+        *,
+        analysis_id=None,
+        stage=None,
+        repair_path=None,
+    ):
         if not self.settings.github_app_configured:
             raise AuthorizationFailed(
                 "GitHub App is not configured. Set GITHUB_APP_CLIENT_ID."
             )
 
         verifier, challenge = pkce_pair()
+        safe_return = self._safe_return_to(return_to)
+        resume_id = self._save_resume(
+            analysis_id=analysis_id,
+            stage=stage,
+            repair_path=repair_path,
+            return_to=safe_return,
+        )
         record = self.store.put_oauth_state(
             code_verifier=verifier,
-            return_to=self._safe_return_to(return_to),
+            return_to=safe_return,
             user_id=user_id,
+            resume_id=resume_id,
         )
         return {
             "authorization_url": self.github_app.authorization_url(
@@ -79,7 +97,8 @@ class AuthService:
         )
         self.refresh_repositories(user)
         session = self.store.create_session(user.id)
-        return session, user, record.return_to
+        resume = self._consume_resume(record.resume_id)
+        return session, user, self._login_return_to(record, resume)
 
     def start_install(self, return_to, session_id):
         session = self.store.require_session(session_id)
@@ -161,21 +180,104 @@ class AuthService:
         self.store.replace_repositories(user.id, repos)
         return repos
 
+    def _save_resume(self, *, analysis_id, stage, repair_path, return_to):
+        if self.resume_store is None:
+            return None
+
+        analysis_id = (analysis_id or "").strip() or None
+        stage = (stage or "").strip() or None
+        path = (repair_path or "").strip() or _path_and_query(return_to)
+        if path in ("", "/"):
+            path = None
+
+        if not analysis_id and not stage and not path:
+            return None
+
+        record = self.resume_store.create(
+            analysis_id=analysis_id,
+            repair_path=path,
+            stage=stage,
+        )
+        return record["id"]
+
+    def _consume_resume(self, resume_id):
+        if not resume_id or self.resume_store is None:
+            return None
+        try:
+            return self.resume_store.consume(resume_id)
+        except AnalysisStoreUnavailable:
+            return None
+
+    def _login_return_to(self, record, resume):
+        current = record.return_to
+        parsed = urlparse(current or "")
+        if parsed.path in ("", "/"):
+            path = (resume or {}).get("repair_path") if resume else None
+            if path:
+                current = self._safe_return_to(path)
+
+        analysis_id = (resume or {}).get("analysis_id") if resume else None
+        if analysis_id:
+            current = _with_query(
+                current or self.settings.frontend_origin,
+                "analysis_id",
+                analysis_id,
+            )
+        return current or self.settings.frontend_origin
+
     def _safe_return_to(self, return_to):
         candidate = (return_to or "").strip() or self.settings.frontend_origin
         parsed = urlparse(candidate)
         if parsed.scheme not in ("http", "https"):
-            return self.settings.frontend_origin
+            if candidate.startswith("/"):
+                origin = self.settings.frontend_origin.rstrip("/")
+                candidate = f"{origin}{candidate}"
+                parsed = urlparse(candidate)
+            else:
+                return self.settings.frontend_origin
         if not parsed.netloc:
             return self.settings.frontend_origin
         if not _host_allowed(parsed.hostname, self.settings):
             return self.settings.frontend_origin
-        return candidate
+        cleaned = urlunparse(parsed._replace(fragment=""))
+        return _strip_oauth_query(cleaned)
+
+
+def _with_query(url, key, value):
+    parsed = urlparse(url)
+    kept = [
+        (name, item)
+        for name, item in parse_qsl(parsed.query, keep_blank_values=True)
+        if name != key
+    ]
+    kept.append((key, value))
+    return urlunparse(parsed._replace(query=urlencode(kept)))
+
+
+def _path_and_query(url):
+    parsed = urlparse(url or "")
+    if parsed.query:
+        return f"{parsed.path}?{parsed.query}"
+    return parsed.path or "/"
+
+
+def _strip_oauth_query(url):
+    parsed = urlparse(url)
+    kept = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in ("connected", "auth_error")
+    ]
+    return urlunparse(parsed._replace(query=urlencode(kept), fragment=""))
 
 
 def _host_allowed(hostname, settings):
     host = (hostname or "").lower()
     if host in ("localhost", "127.0.0.1"):
+        return True
+
+    frontend_host = urlparse(settings.frontend_origin).hostname
+    if host and frontend_host and host == frontend_host.lower():
         return True
 
     allowed = settings.cors_origins or ""

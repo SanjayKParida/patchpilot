@@ -16,6 +16,7 @@ import 'package:patchpilot_web/services/github_redirect.dart';
 import 'package:patchpilot_web/services/session_token.dart';
 
 import 'app_routes.dart';
+import 'oauth_return.dart';
 
 class AppShell extends StatefulWidget {
   final ApiClient? api;
@@ -82,13 +83,19 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  Future<void> _connectGithub() async {
-    String? returnTo;
-    final base = Uri.base;
-    if (base.scheme == 'http' || base.scheme == 'https') {
-      returnTo = base.origin;
-    }
-    final url = await _api.startGithubLogin(returnTo: returnTo);
+  Future<void> _connectGithub({String? analysisId, String? stage}) async {
+    final route = _router?.routeInformationProvider.value.uri;
+    final resolvedId = analysisId ?? oauthAnalysisId(route);
+    final url = await _api.startGithubLogin(
+      returnTo: oauthReturnTo(
+        page: Uri.base,
+        route: route,
+        analysisId: resolvedId,
+      ),
+      analysisId: resolvedId,
+      stage: stage ?? oauthStage(route),
+      repairPath: oauthRepairPath(route),
+    );
     if (url.isEmpty) {
       throw const ApiException('GitHub did not return an authorization URL.');
     }
@@ -96,11 +103,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _manageGithub() async {
-    String? returnTo;
-    final base = Uri.base;
-    if (base.scheme == 'http' || base.scheme == 'https') {
-      returnTo = base.origin;
-    }
+    final route = _router?.routeInformationProvider.value.uri;
+    final returnTo = oauthReturnTo(page: Uri.base, route: route);
     final url = await _api.startGithubInstall(returnTo: returnTo);
     if (url.isEmpty) {
       throw const ApiException('GitHub did not return an installation URL.');
@@ -153,7 +157,7 @@ class _AppShellState extends State<AppShell> {
                   extra: repository,
                 );
               },
-              onConnectGithub: _connectGithub,
+              onConnectGithub: () => _connectGithub(),
               onManageGithub: _manageGithub,
               onLogout: _logout,
               refreshGrantsOnStart:
@@ -219,6 +223,7 @@ class _AppShellState extends State<AppShell> {
             final requested = AppRoutes.stageFrom(
               state.pathParameters['stage'],
             );
+            final resumeAnalysisId = oauthAnalysisId(state.uri);
 
             final extra = state.extra;
             late final Repository repository;
@@ -261,6 +266,7 @@ class _AppShellState extends State<AppShell> {
               session: _session,
               onConnectGithub: _connectGithub,
               requestedStage: requested,
+              resumeAnalysisId: resumeAnalysisId,
               onStageCommitted: (stage) => commit(stage, replace: false),
               onStageNormalized: (stage) => commit(stage, replace: true),
               onBack: () =>

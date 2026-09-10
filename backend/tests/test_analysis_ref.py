@@ -226,7 +226,7 @@ def test_invalid_ref_fails_before_analysis():
         assert "not started" in response.json()["detail"]
         assert runner.calls == []
         assert github.source_refs == []
-        assert store._analyses == {}
+        assert store.find_reusable("o", "r", 3) is None
     finally:
         _clear()
 

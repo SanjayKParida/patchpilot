@@ -134,6 +134,8 @@ class AnalysisRequest(BaseModel):
     # word for it.
     ref: Optional[str] = None
     commit: Optional[str] = None
+    # When true, skip reuse of a completed or in-flight job.
+    force: bool = False
 
     @model_validator(mode="after")
     def _ref_and_commit_agree(self):

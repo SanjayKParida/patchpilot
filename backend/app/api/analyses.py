@@ -103,6 +103,9 @@ def create_analysis(
     An explicit `ref`/`commit` is resolved to a SHA before the job is
     created. An invalid ref fails this request; it is never replaced
     with HEAD.
+
+    A completed or in-flight analysis for the same issue is returned
+    instead of starting another run. Pass `force` to diagnose again.
     """
 
     access.assert_can_analyze(request.owner, request.repo, session)
@@ -133,6 +136,19 @@ def create_analysis(
             requested_ref,
         )
 
+    user_id = session.user_id if session else None
+    if not request.force:
+        existing = store.find_reusable(
+            request.owner,
+            request.repo,
+            request.issue_number,
+            commit_sha=commit_sha,
+            ref=requested_ref,
+            user_id=user_id,
+        )
+        if existing is not None:
+            return existing
+
     granted = None
     if session is not None:
         granted = access.store.find_repository(
@@ -147,7 +163,7 @@ def create_analysis(
         request.issue_number,
         ref=requested_ref,
         commit_sha=commit_sha,
-        user_id=session.user_id if session else None,
+        user_id=user_id,
         github_repo_id=granted.github_repo_id if granted else None,
     )
 

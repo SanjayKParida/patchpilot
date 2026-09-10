@@ -128,6 +128,7 @@ def _settings(**overrides):
         demo_description="Try PatchPilot on prepared issues",
         frontend_origin="http://localhost:59738",
         cors_origins=None,
+        redis_url=None,
     )
     values.update(overrides)
     return Settings(**values)

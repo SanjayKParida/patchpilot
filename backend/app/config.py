@@ -58,6 +58,7 @@ class Settings:
     demo_description: str
     frontend_origin: str
     cors_origins: str | None
+    redis_url: str | None
 
     @property
     def github_app_configured(self):
@@ -103,4 +104,5 @@ def get_settings():
         ),
         frontend_origin=_env("FRONTEND_ORIGIN", "http://localhost:59738"),
         cors_origins=_env("CORS_ORIGINS"),
+        redis_url=_env("REDIS_URL"),
     )

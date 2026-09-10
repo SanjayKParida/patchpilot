@@ -17,6 +17,7 @@ from app.config import SESSION_COOKIE_NAME, get_settings
 from app.services.analysis_store import AnalysisStore
 from app.services.analysis_runner import AnalysisRunner
 from app.services.auth_store import AuthStore
+from app.services.oauth_resume_store import OAuthResumeStore
 from app.services.context_builder_service import ContextBuilderService
 from app.services.github_service import GithubService
 from app.services.llm_service import LLMService
@@ -36,7 +37,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-_store = AnalysisStore()
+_store = None
+_resume_store = None
 _auth_store = AuthStore(
     session_ttl_seconds=get_settings().session_ttl_seconds,
 )
@@ -102,6 +104,9 @@ def get_patch_validator():
 
 
 def get_analysis_store():
+    global _store
+    if _store is None:
+        _store = AnalysisStore()
     return _store
 
 
@@ -111,6 +116,13 @@ def get_repository_snapshot_store():
 
 def get_auth_store():
     return _auth_store
+
+
+def get_oauth_resume_store():
+    global _resume_store
+    if _resume_store is None:
+        _resume_store = OAuthResumeStore()
+    return _resume_store
 
 
 @lru_cache(maxsize=1)
@@ -123,6 +135,7 @@ def get_auth_service():
         store=get_auth_store(),
         github_app=get_github_app_client(),
         settings=get_settings(),
+        resume_store=get_oauth_resume_store(),
     )
 
 

@@ -81,6 +81,7 @@ class OAuthState:
     return_to: str
     expires_at: str
     user_id: str | None = None
+    resume_id: str | None = None
 
 
 def permissions_allow_write(permissions):

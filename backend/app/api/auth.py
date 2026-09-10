@@ -2,6 +2,8 @@
 
 import logging
 
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import RedirectResponse
 
@@ -57,6 +59,9 @@ def auth_me(session=Depends(get_optional_session), auth=Depends(get_auth_service
 def github_login(
     request: Request,
     return_to: str | None = Query(None),
+    analysis_id: str | None = Query(None),
+    stage: str | None = Query(None),
+    repair_path: str | None = Query(None),
     auth=Depends(get_auth_service),
     session=Depends(get_optional_session),
 ):
@@ -71,6 +76,9 @@ def github_login(
     started = auth.start_login(
         origin,
         user_id=session.user_id if session else None,
+        analysis_id=analysis_id,
+        stage=stage,
+        repair_path=repair_path,
     )
     logger.info(
         "GitHub App user-authorization URL %s",
@@ -100,10 +108,23 @@ def github_install(
 
 
 def _connected_destination(return_to, fallback):
-    destination = (return_to or fallback).rstrip("/")
+    destination = _strip_oauth_markers(return_to or fallback).rstrip("/")
     if "?" in destination:
         return f"{destination}&connected=1"
-    return f"{destination}/?connected=1"
+    parsed = urlparse(destination)
+    if parsed.path in ("", "/"):
+        return f"{destination}/?connected=1"
+    return f"{destination}?connected=1"
+
+
+def _strip_oauth_markers(url):
+    parsed = urlparse(url)
+    kept = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in ("connected", "auth_error")
+    ]
+    return urlunparse(parsed._replace(query=urlencode(kept), fragment=""))
 
 
 def _session_destination(return_to, fallback, session_id):

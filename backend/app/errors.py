@@ -31,8 +31,13 @@ class UpstreamUnavailable(PatchPilotError):
     """GitHub or the language model failed in a way we cannot recover from."""
 
 
+class AnalysisStoreUnavailable(PatchPilotError):
+    """Redis is missing, unreachable, or refused a write."""
+
+
 class AnalysisNotFound(PatchPilotError):
     pass
+
 
 
 class GithubPermissionDenied(PatchPilotError):

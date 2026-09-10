@@ -177,10 +177,28 @@ class ApiClient {
     return AuthMe.fromJson(json as Map<String, dynamic>);
   }
 
-  Future<String> startGithubLogin({String? returnTo}) async {
+  Future<String> startGithubLogin({
+    String? returnTo,
+    String? analysisId,
+    String? stage,
+    String? repairPath,
+  }) async {
+    final query = <String, String>{};
+    if (returnTo != null && returnTo.isNotEmpty) {
+      query['return_to'] = returnTo;
+    }
+    if (analysisId != null && analysisId.isNotEmpty) {
+      query['analysis_id'] = analysisId;
+    }
+    if (stage != null && stage.isNotEmpty) {
+      query['stage'] = stage;
+    }
+    if (repairPath != null && repairPath.isNotEmpty) {
+      query['repair_path'] = repairPath;
+    }
     final json = await _get(
       '/api/auth/github/login',
-      returnTo == null || returnTo.isEmpty ? null : {'return_to': returnTo},
+      query.isEmpty ? null : query,
     );
     final map = json as Map<String, dynamic>;
     return map['authorization_url'] as String? ?? '';
@@ -212,6 +230,7 @@ class ApiClient {
     required String repo,
     required int issueNumber,
     String? ref,
+    bool force = false,
   }) async {
     final body = <String, dynamic>{
       'owner': owner,
@@ -221,6 +240,9 @@ class ApiClient {
     final pinned = ref?.trim();
     if (pinned != null && pinned.isNotEmpty) {
       body['ref'] = pinned;
+    }
+    if (force) {
+      body['force'] = true;
     }
 
     final json = await _post('/api/analyses', body);

@@ -17,6 +17,7 @@ from app.dependencies import (
     get_github_app_client,
     get_github_service,
     get_github_write_client,
+    get_oauth_resume_store,
     get_patch_delivery_service,
     get_repository_access,
     get_settings,
@@ -29,7 +30,9 @@ from app.infrastructure.github_app_client import (
 from app.main import app
 from app.services.analysis_store import AnalysisStore
 from app.services.auth_store import AuthStore
+from app.services.oauth_resume_store import OAuthResumeStore
 from tests.fakes.github_app_client import FakeGitHubAppClient
+from tests.fakes.memory_redis import MemoryRedis
 from tests.fakes.github_write_client import FakeGithub, FakeGithubWriteClient
 
 
@@ -51,6 +54,7 @@ def _settings(**overrides):
         demo_description="Try PatchPilot on prepared issues",
         frontend_origin="http://localhost:59738",
         cors_origins=None,
+        redis_url=None,
     )
     values.update(overrides)
     return Settings(**values)
@@ -61,7 +65,8 @@ def auth_env():
     settings = _settings()
     auth_store = AuthStore(session_ttl_seconds=settings.session_ttl_seconds)
     github_app = FakeGitHubAppClient()
-    auth = AuthService(auth_store, github_app, settings)
+    resume_store = OAuthResumeStore(redis_client=MemoryRedis())
+    auth = AuthService(auth_store, github_app, settings, resume_store=resume_store)
     access = RepositoryAccess(auth_store, settings, github_app)
     analyses = AnalysisStore()
     github = FakeGithub()
@@ -74,6 +79,7 @@ def auth_env():
     app.dependency_overrides[get_auth_service] = lambda: auth
     app.dependency_overrides[get_repository_access] = lambda: access
     app.dependency_overrides[get_analysis_store] = lambda: analyses
+    app.dependency_overrides[get_oauth_resume_store] = lambda: resume_store
     app.dependency_overrides[get_github_service] = lambda: github
     app.dependency_overrides[get_github_write_client] = lambda: writer
     app.dependency_overrides[get_patch_delivery_service] = lambda: delivery
@@ -88,6 +94,7 @@ def auth_env():
             "access": access,
             "analyses": analyses,
             "writer": writer,
+            "resume_store": resume_store,
         }
 
     app.dependency_overrides.clear()
@@ -387,7 +394,7 @@ def test_anonymous_cannot_analyze_a_user_repository(auth_env):
         },
     )
     assert response.status_code == 401
-    assert auth_env["analyses"]._analyses == {}
+    assert auth_env["analyses"].find_reusable("octocat", "private-app", 1) is None
 
 
 def test_demo_repository_available_without_login(auth_env):
@@ -651,3 +658,69 @@ def test_user_cannot_see_another_users_repositories(auth_env):
         "octocat/private-app",
         "octocat/public-notes",
     }
+
+
+def test_login_callback_preserves_repair_path(auth_env):
+    client = auth_env["client"]
+    repair = "http://localhost:59738/r/owner/repo/issues/1/diagnosis"
+    start = client.get(
+        "/api/auth/github/login",
+        params={
+            "return_to": repair,
+            "analysis_id": "analysis-abc",
+            "stage": "diagnosis",
+            "repair_path": "/r/owner/repo/issues/1/diagnosis",
+        },
+    )
+    assert start.status_code == 200
+    state = parse_qs(urlparse(start.json()["authorization_url"]).query)["state"][0]
+    oauth = auth_env["auth_store"]._oauth[state]
+    assert oauth.resume_id
+    assert oauth.return_to.startswith(repair)
+
+    stored = auth_env["resume_store"]._client().get(
+        f"oauth:resume:{oauth.resume_id}"
+    )
+    assert stored
+    resume_id = oauth.resume_id
+
+    callback = client.get(
+        "/api/auth/github/callback",
+        params={"code": "ok-code", "state": state},
+        follow_redirects=False,
+    )
+    location = callback.headers["location"]
+    assert callback.status_code == 302
+    assert "/r/owner/repo/issues/1/diagnosis" in location
+    assert "analysis_id=analysis-abc" in location
+    assert "connected=1" in location
+    assert "#session=" in location
+    assert "auth_error=" not in location
+    assert auth_env["resume_store"].consume(resume_id) is None
+
+
+def test_install_callback_preserves_repair_path(auth_env):
+    client = auth_env["client"]
+    _login(client)
+    repair = "http://localhost:59738/r/owner/repo/issues/1/pull-request"
+    start = client.get(
+        "/api/auth/github/install",
+        params={"return_to": repair},
+    )
+    state = parse_qs(
+        urlparse(start.json()["installation_url"]).query
+    )["state"][0]
+    callback = client.get(
+        "/api/auth/github/callback",
+        params={
+            "installation_id": "77",
+            "setup_action": "install",
+            "state": state,
+        },
+        follow_redirects=False,
+    )
+    location = callback.headers["location"]
+    assert callback.status_code == 302
+    assert "/r/owner/repo/issues/1/pull-request" in location
+    assert "connected=1" in location
+    assert "auth_error=" not in location

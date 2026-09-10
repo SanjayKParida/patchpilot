@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'package:patchpilot_web/app/app_routes.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/features/repair/code_viewer/screens/code_viewer_screen.dart';
 import 'package:patchpilot_web/features/repair/context/screens/context_screen.dart';
@@ -38,8 +39,10 @@ class RepairSession extends StatefulWidget {
   final VoidCallback onBack;
   final GithubRedirect? redirect;
   final ValueNotifier<AuthUser?>? session;
-  final Future<void> Function()? onConnectGithub;
+  final Future<void> Function({String? analysisId, String? stage})?
+  onConnectGithub;
   final RepairStage? requestedStage;
+  final String? resumeAnalysisId;
   final ValueChanged<RepairStage>? onStageCommitted;
   final ValueChanged<RepairStage>? onStageNormalized;
 
@@ -55,6 +58,7 @@ class RepairSession extends StatefulWidget {
     this.session,
     this.onConnectGithub,
     this.requestedStage,
+    this.resumeAnalysisId,
     this.onStageCommitted,
     this.onStageNormalized,
   });
@@ -134,11 +138,25 @@ class _RepairSessionState extends State<RepairSession> {
   void initState() {
     super.initState();
     widget.session?.addListener(_onSession);
-    final cached = widget.cache.read(_cacheKey);
-    if (cached != null) {
-      _analysis = cached;
-      _fromCache = true;
+    final resumeId = widget.resumeAnalysisId?.trim();
+    final hasResume = resumeId != null && resumeId.isNotEmpty;
+
+    if (!hasResume) {
+      final cached = widget.cache.read(_cacheKey);
+      if (cached != null) {
+        _analysis = cached;
+        _fromCache = true;
+      }
     }
+
+    if (hasResume) {
+      final requested = widget.requestedStage;
+      if (requested != null) {
+        _adoptStage(_normalizeStage(requested));
+      }
+      return;
+    }
+
     if (_diagnosisReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _hydrateArtifacts();
@@ -737,6 +755,7 @@ class _RepairSessionState extends State<RepairSession> {
                 repository: widget.repository,
                 issue: widget.issue,
                 ref: widget.ref,
+                resumeAnalysisId: widget.resumeAnalysisId,
                 onBack: widget.onBack,
                 onSessionUpdate: _onDiagnosisUpdate,
               ),
@@ -816,7 +835,12 @@ class _RepairSessionState extends State<RepairSession> {
                   key: ValueKey('pr-$id'),
                   state: _pullRequestState,
                   needsGithubConnect: _needsGithubConnect,
-                  onConnectGithub: widget.onConnectGithub,
+                  onConnectGithub: widget.onConnectGithub == null
+                      ? null
+                      : () => widget.onConnectGithub!(
+                          analysisId: analysisId,
+                          stage: AppRoutes.segmentFor(_stage),
+                        ),
                   onCreatePr: (title, description) {
                     _createDraftPr(title: title, description: description);
                   },

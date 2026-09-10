@@ -11,6 +11,7 @@ import 'package:patchpilot_web/features/repair/context/screens/context_screen.da
 import 'package:patchpilot_web/features/repair/diagnosis/screens/diagnosis_screen.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_shell.dart';
+import 'package:patchpilot_web/features/repair/shell/repair_workflow.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
@@ -34,6 +35,30 @@ class _TestRedirect implements GithubRedirect {
 
   @override
   void open(String url) => opened = url;
+}
+
+Analysis _staleAnalysis() {
+  return Analysis(
+    id: 'stale',
+    status: AnalysisStatus.completed,
+    issueNumber: 1,
+    issue: const Issue(
+      number: 1,
+      title: 'Refresh spinner never stops',
+      body: 'Pull to refresh stays on TaskLoading.',
+    ),
+    signals: const [Signal(term: 'refresh', type: 'behavior')],
+    relevantFiles: const [],
+    diagnosis: const Diagnosis(
+      rootCause: 'Stale cached root cause.',
+      confidence: 0.5,
+      explanation: 'This result is from an earlier local cache.',
+      suggestedFix: 'Ignore this cached diagnosis.',
+      citedFiles: [_path],
+      rootCauseLocations: [],
+    ),
+    commitSha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  );
 }
 
 Analysis _completedAnalysis() {
@@ -77,6 +102,19 @@ Analysis _completedAnalysis() {
     commitSha: 'f0bfc5b317f4984dc2c8d253715e9a30c72c0a5c',
   );
 }
+
+Map<String, dynamic> _completedAnalysisJson() => {
+  'id': 'a1',
+  'status': 'completed',
+  'issue_number': 1,
+  'diagnosis': {
+    'root_cause': 'TaskBloc never emits TaskLoaded on refresh.',
+    'confidence': 0.9,
+    'explanation': 'The refresh handler stops in TaskLoading.',
+    'suggested_fix': 'Emit TaskLoaded after the refresh fetch succeeds.',
+    'cited_files': [_path],
+  },
+};
 
 const _repo = Repository(owner: 'owner', repo: 'repo', fullName: 'owner/repo');
 
@@ -209,12 +247,33 @@ ApiClient _artifactApi({
   bool delivered = false,
   void Function()? onApprove,
   void Function()? onDeliver,
+  void Function(String id)? onGetAnalysis,
+  void Function()? onPostAnalysis,
+  Map<String, dynamic>? analysis,
   List<String>? deliverBodies,
   List<Map<String, dynamic>>? deliverQueue,
 }) {
   return ApiClient(
     client: MockClient((request) async {
       final path = request.url.path;
+      if (request.method == 'POST' && path.endsWith('/analyses')) {
+        onPostAnalysis?.call();
+        return http.Response(
+          jsonEncode({'id': 'a1', 'status': 'queued', 'issue_number': 1}),
+          200,
+        );
+      }
+      if (request.method == 'GET' &&
+          path.contains('/analyses/') &&
+          !path.contains('/patch') &&
+          !path.endsWith('/context') &&
+          !path.endsWith('/files')) {
+        onGetAnalysis?.call(path.split('/').last);
+        if (analysis != null) {
+          return http.Response(jsonEncode(analysis), 200);
+        }
+        return http.Response(jsonEncode({'detail': 'missing'}), 404);
+      }
       if (path.endsWith('/patch/validate')) {
         return http.Response(jsonEncode(_passedValidationJson()), 200);
       }
@@ -300,7 +359,9 @@ Future<void> _pumpSessionWithApi(
   GithubRedirect? redirect,
   Repository repository = _repo,
   ValueNotifier<AuthUser?>? session,
-  Future<void> Function()? onConnectGithub,
+  Future<void> Function({String? analysisId, String? stage})? onConnectGithub,
+  RepairStage? requestedStage,
+  String? resumeAnalysisId,
 }) async {
   tester.view.physicalSize = const Size(1200, 2400);
   tester.view.devicePixelRatio = 1.0;
@@ -318,6 +379,8 @@ Future<void> _pumpSessionWithApi(
         redirect: redirect,
         session: session,
         onConnectGithub: onConnectGithub,
+        requestedStage: requestedStage,
+        resumeAnalysisId: resumeAnalysisId,
         onBack: () {},
       ),
     ),
@@ -501,6 +564,58 @@ void main() {
 
     expect(find.byType(DiagnosisScreen, skipOffstage: false), findsOneWidget);
     expect(find.byType(RepairShell), findsOneWidget);
+  });
+
+  testWidgets('reopening a diagnosed issue shows the cache without posting', (
+    tester,
+  ) async {
+    var posts = 0;
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, _issue.number),
+      _completedAnalysis(),
+    );
+    final client = ApiClient(
+      client: MockClient((request) async {
+        if (request.method == 'POST' &&
+            request.url.path.endsWith('/analyses')) {
+          posts += 1;
+          return http.Response(
+            jsonEncode({'id': 'new', 'status': 'queued', 'issue_number': 1}),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({'detail': 'No patch proposal is available'}),
+          502,
+        );
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.build(),
+        home: RepairSession(
+          api: client,
+          cache: cache,
+          repository: _repo,
+          issue: _issue,
+          onBack: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(posts, 0);
+    expect(
+      find.text('TaskBloc never emits TaskLoaded on refresh.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Showing the result from earlier in this session'),
+      findsWidgets,
+    );
   });
 
   testWidgets('file navigation from the diagnosis still opens the viewer', (
@@ -884,7 +999,7 @@ void main() {
       cache,
       _artifactApi(approved: true, onDeliver: () => deliverCalls += 1),
       repository: _demoRepo,
-      onConnectGithub: () async => connectCalls += 1,
+      onConnectGithub: ({analysisId, stage}) async => connectCalls += 1,
     );
 
     await tester.tap(find.text('Pull Request'));
@@ -908,5 +1023,148 @@ void main() {
 
     expect(connectCalls, 1);
     expect(deliverCalls, 0);
+  });
+
+  testWidgets('cache-first diagnosis is unchanged when there is no resume', (
+    tester,
+  ) async {
+    var posts = 0;
+    final got = <String>[];
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, _issue.number),
+      _completedAnalysis(),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      _artifactApi(
+        analysis: _completedAnalysisJson(),
+        onGetAnalysis: got.add,
+        onPostAnalysis: () => posts += 1,
+      ),
+    );
+
+    expect(
+      find.text('TaskBloc never emits TaskLoaded on refresh.'),
+      findsOneWidget,
+    );
+    expect(find.text('Stale cached root cause.'), findsNothing);
+    expect(posts, 0);
+    expect(got, isEmpty);
+  });
+
+  testWidgets('resumeAnalysisId beats a stale local cache and GETs once', (
+    tester,
+  ) async {
+    var posts = 0;
+    final got = <String>[];
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, _issue.number),
+      _staleAnalysis(),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      _artifactApi(
+        analysis: _completedAnalysisJson(),
+        onGetAnalysis: got.add,
+        onPostAnalysis: () => posts += 1,
+      ),
+      resumeAnalysisId: 'a1',
+    );
+
+    expect(
+      find.text('TaskBloc never emits TaskLoaded on refresh.'),
+      findsOneWidget,
+    );
+    expect(find.text('Stale cached root cause.'), findsNothing);
+    expect(posts, 0);
+    expect(got, ['a1']);
+  });
+
+  testWidgets('resumed Pull Request stage stays on Pull Request', (
+    tester,
+  ) async {
+    var posts = 0;
+    final got = <String>[];
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, _issue.number),
+      _staleAnalysis(),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      _artifactApi(
+        approved: true,
+        analysis: _completedAnalysisJson(),
+        onGetAnalysis: got.add,
+        onPostAnalysis: () => posts += 1,
+      ),
+      resumeAnalysisId: 'a1',
+      requestedStage: RepairStage.pullRequest,
+    );
+
+    expect(find.byType(PullRequestScreen), findsOneWidget);
+    expect(find.text('Create pull request'), findsOneWidget);
+    expect(
+      find.text('TaskBloc never emits TaskLoaded on refresh.'),
+      findsNothing,
+    );
+    expect(find.text('Stale cached root cause.'), findsNothing);
+    expect(posts, 0);
+    expect(got, ['a1']);
+  });
+
+  testWidgets('invalid resume analysisId falls back to a new diagnosis', (
+    tester,
+  ) async {
+    var posts = 0;
+    var gets = 0;
+    final cache = AnalysisCache();
+    cache.save(
+      AnalysisCache.keyFor(_repo.owner, _repo.repo, _issue.number),
+      _staleAnalysis(),
+    );
+    final client = ApiClient(
+      client: MockClient((request) async {
+        final path = request.url.path;
+        if (request.method == 'GET' && path.endsWith('/analyses/missing')) {
+          gets += 1;
+          return http.Response(
+            jsonEncode({'detail': 'No analysis with id missing'}),
+            404,
+          );
+        }
+        if (request.method == 'POST' && path.endsWith('/analyses')) {
+          posts += 1;
+          return http.Response(jsonEncode(_completedAnalysisJson()), 200);
+        }
+        return http.Response(
+          jsonEncode({'detail': 'No patch proposal is available'}),
+          502,
+        );
+      }),
+    );
+
+    await _pumpSessionWithApi(
+      tester,
+      cache,
+      client,
+      resumeAnalysisId: 'missing',
+    );
+
+    expect(
+      find.text('TaskBloc never emits TaskLoaded on refresh.'),
+      findsOneWidget,
+    );
+    expect(find.text('Stale cached root cause.'), findsNothing);
+    expect(gets, 1);
+    expect(posts, 1);
   });
 }

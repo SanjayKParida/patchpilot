@@ -62,6 +62,28 @@ def _isolate_github_app_settings(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_analysis_store(monkeypatch):
+    """Each test gets an empty Redis-backed analysis store."""
+
+    from app import dependencies
+    from app.services.analysis_store import AnalysisStore
+    from tests.fakes.memory_redis import MemoryRedis
+
+    fake = MemoryRedis()
+    monkeypatch.setattr(
+        "app.services.analysis_store.connect_redis",
+        lambda url=None: fake,
+    )
+    from app.services.oauth_resume_store import OAuthResumeStore
+
+    dependencies._store = AnalysisStore(redis_client=fake)
+    dependencies._resume_store = OAuthResumeStore(redis_client=fake)
+    yield
+    dependencies._store = None
+    dependencies._resume_store = None
+
+
+@pytest.fixture(autouse=True)
 def _isolate_snapshot_store():
     """Each test gets an empty snapshot cache and a fresh runner."""
 

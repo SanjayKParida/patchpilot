@@ -12,6 +12,7 @@ from app.api.repositories import repositories_router
 from app.dependencies import get_llm_service, get_settings
 from app.errors import (
     AnalysisNotFound,
+    AnalysisStoreUnavailable,
     AuthorizationFailed,
     GithubPermissionDenied,
     InvalidOAuthState,
@@ -63,6 +64,7 @@ ERROR_STATUS = {
     RepositoryNotFound: 404,
     IssueNotFound: 404,
     AnalysisNotFound: 404,
+    AnalysisStoreUnavailable: 503,
     PatchApprovalNotFound: 404,
     PatchDeliveryNotFound: 404,
     InvalidOAuthState: 400,
