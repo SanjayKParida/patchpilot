@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
@@ -46,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _error;
   String _query = '';
   bool _managing = false;
+  bool _grantRefreshStarted = false;
 
   AuthUser? get _user => widget.session.value;
 
@@ -57,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadDemo();
 
     if (_user != null) {
-      _loadRepos(refresh: widget.refreshGrantsOnStart);
+      _loadRepos(refreshInBackground: true);
     }
   }
 
@@ -70,8 +73,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _onSession() {
     if (_user != null) {
-      _loadRepos();
+      _loadRepos(refreshInBackground: true);
     } else {
+      _grantRefreshStarted = false;
       setState(() => _repos = const []);
     }
     setState(() {});
@@ -97,25 +101,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _loadRepos({bool refresh = false}) async {
+  Future<void> _loadRepos({bool refreshInBackground = false}) async {
     setState(() => _loadingRepos = true);
 
     try {
-      final repos = refresh
-          ? await widget.api.refreshAuthorizedRepositories()
-          : await widget.api.listAuthorizedRepositories();
-
+      final repos = await widget.api.listAuthorizedRepositories();
       if (!mounted) return;
-
       setState(() => _repos = repos);
     } on ApiException catch (e) {
       if (!mounted) return;
-
       setState(() => _error = e.message);
     } finally {
-      if (mounted) {
-        setState(() => _loadingRepos = false);
-      }
+      if (mounted) setState(() => _loadingRepos = false);
+    }
+
+    if (!mounted || !refreshInBackground) return;
+    unawaited(_refreshGrantsInBackground());
+  }
+
+  Future<void> _refreshGrantsInBackground() async {
+    if (_grantRefreshStarted) return;
+    _grantRefreshStarted = true;
+
+    try {
+      final repos = await widget.api.refreshAuthorizedRepositories();
+      if (!mounted) return;
+      setState(() => _repos = repos);
+    } on ApiException {
+      // Keep the cached list. A failed GitHub refresh is not a dashboard error.
     }
   }
 
