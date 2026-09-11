@@ -88,7 +88,7 @@ class AppSpinner extends StatelessWidget {
       height: diameter,
       child: CupertinoActivityIndicator(
         radius: diameter / 2,
-        color: color ?? AppTheme.accent,
+        color: color ?? AppTheme.text,
       ),
     );
   }
