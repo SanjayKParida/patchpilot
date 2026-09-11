@@ -945,10 +945,19 @@ class _ValidationSection extends StatelessWidget {
               icon: Icons.verified_outlined,
             )
           else if (approving)
-            const StatusChip(
-              label: 'Approving',
-              color: AppTheme.accent,
-              icon: Icons.hourglass_top,
+            const Row(
+              children: [
+                AppSpinner(size: 16),
+                SizedBox(width: 10),
+                Text(
+                  'Approving…',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.accent,
+                  ),
+                ),
+              ],
             )
           else
             FilledButton(

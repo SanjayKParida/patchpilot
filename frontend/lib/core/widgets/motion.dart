@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -68,8 +67,8 @@ class _SlideTransform extends GradientTransform {
   }
 }
 
-/// Compact rotating arc used in buttons, banners, and the boot screen.
-class AppSpinner extends StatefulWidget {
+/// Compact activity indicator used in buttons, banners, and the boot screen.
+class AppSpinner extends StatelessWidget {
   final double size;
   final double strokeWidth;
   final Color? color;
@@ -82,96 +81,16 @@ class AppSpinner extends StatefulWidget {
   });
 
   @override
-  State<AppSpinner> createState() => _AppSpinnerState();
-}
-
-class _AppSpinnerState extends State<AppSpinner>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final color = widget.color ?? AppTheme.accent;
-
+    final diameter = size + 2;
     return SizedBox(
-      width: widget.size,
-      height: widget.size,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          return CustomPaint(
-            painter: _SpinnerPainter(
-              t: _controller.value,
-              color: color,
-              strokeWidth: widget.strokeWidth,
-            ),
-          );
-        },
+      width: diameter,
+      height: diameter,
+      child: CupertinoActivityIndicator(
+        radius: diameter / 2,
+        color: color ?? AppTheme.accent,
       ),
     );
-  }
-}
-
-class _SpinnerPainter extends CustomPainter {
-  final double t;
-  final Color color;
-  final double strokeWidth;
-
-  const _SpinnerPainter({
-    required this.t,
-    required this.color,
-    required this.strokeWidth,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final inset = strokeWidth / 2;
-    final rect = Rect.fromLTWH(
-      inset,
-      inset,
-      size.width - strokeWidth,
-      size.height - strokeWidth,
-    );
-
-    canvas.drawArc(
-      rect,
-      0,
-      math.pi * 2,
-      false,
-      Paint()
-        ..color = color.withValues(alpha: 0.16)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round,
-    );
-
-    final sweep =
-        (0.32 + 0.38 * (0.5 + 0.5 * math.sin(t * math.pi * 2))) * math.pi * 2;
-    canvas.drawArc(
-      rect,
-      t * math.pi * 2,
-      sweep,
-      false,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SpinnerPainter old) {
-    return old.t != t || old.color != color || old.strokeWidth != strokeWidth;
   }
 }
 

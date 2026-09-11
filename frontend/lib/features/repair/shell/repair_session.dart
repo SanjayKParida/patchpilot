@@ -833,6 +833,7 @@ class _RepairSessionState extends State<RepairSession> {
                 child: ReviewScreen(
                   key: ValueKey('review-$id'),
                   state: _reviewState,
+                  approving: _approving,
                   onApprove: _approveFromReview,
                   onRequestChanges: _requestChanges,
                   onFileTap: (file) => _openFile(

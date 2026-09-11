@@ -9,6 +9,7 @@ import 'review_widgets.dart';
 
 class ReviewScreen extends StatelessWidget {
   final ReviewState state;
+  final bool approving;
   final VoidCallback onApprove;
   final ValueChanged<String> onRequestChanges;
   final ValueChanged<ChangedFile>? onFileTap;
@@ -18,6 +19,7 @@ class ReviewScreen extends StatelessWidget {
     required this.state,
     required this.onApprove,
     required this.onRequestChanges,
+    this.approving = false,
     this.onFileTap,
   });
 
@@ -41,6 +43,7 @@ class ReviewScreen extends StatelessWidget {
 
     return _ReadyForReviewView(
       state: state,
+      approving: approving,
       onApprove: onApprove,
       onRequestChanges: () => _showRequestChangesDialog(context),
       onFileTap: onFileTap,
@@ -107,6 +110,7 @@ class _WaitingView extends StatelessWidget {
 
 class _ReadyForReviewView extends StatelessWidget {
   final ReviewState state;
+  final bool approving;
   final VoidCallback onApprove;
   final VoidCallback onRequestChanges;
   final ValueChanged<ChangedFile>? onFileTap;
@@ -115,6 +119,7 @@ class _ReadyForReviewView extends StatelessWidget {
     required this.state,
     required this.onApprove,
     required this.onRequestChanges,
+    this.approving = false,
     this.onFileTap,
   });
 
@@ -131,6 +136,7 @@ class _ReadyForReviewView extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         ReviewDecisionBar(
           enabled: state.canApprove,
+          approving: approving,
           onApprove: onApprove,
           onRequestChanges: onRequestChanges,
         ),

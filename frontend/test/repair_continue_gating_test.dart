@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
+import 'package:patchpilot_web/features/repair/review/screens/review_widgets.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_session.dart';
 import 'package:patchpilot_web/models/models.dart';
 import 'package:patchpilot_web/services/analysis_cache.dart';
@@ -489,6 +491,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('Continue to Pull Request'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(ReviewDecisionBar),
+        matching: find.byType(AppSpinner),
+      ),
+      findsOneWidget,
+    );
 
     approve.complete(_json(_approvalJson()));
     await tester.pumpAndSettle();

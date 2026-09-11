@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:patchpilot_web/core/theme/app_theme.dart';
 import 'package:patchpilot_web/core/widgets/common.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/shell/repair_section_help.dart';
 
 import 'review_models.dart';
@@ -467,6 +468,7 @@ class ReviewNotesSection extends StatelessWidget {
 
 class ReviewDecisionBar extends StatelessWidget {
   final bool enabled;
+  final bool approving;
   final VoidCallback onApprove;
   final VoidCallback onRequestChanges;
 
@@ -475,6 +477,7 @@ class ReviewDecisionBar extends StatelessWidget {
     required this.enabled,
     required this.onApprove,
     required this.onRequestChanges,
+    this.approving = false,
   });
 
   @override
@@ -488,7 +491,7 @@ class ReviewDecisionBar extends StatelessWidget {
         children: [
           Expanded(
             child: FilledButton(
-              onPressed: enabled ? onRequestChanges : null,
+              onPressed: enabled && !approving ? onRequestChanges : null,
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.surfaceElevated,
                 foregroundColor: AppTheme.text,
@@ -512,7 +515,7 @@ class ReviewDecisionBar extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: FilledButton(
-              onPressed: enabled ? onApprove : null,
+              onPressed: enabled && !approving ? onApprove : null,
               style: FilledButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: AppTheme.accent,
@@ -527,10 +530,15 @@ class ReviewDecisionBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
               ),
-              child: const Text(
-                'Approve patch',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
+              child: approving
+                  ? const AppSpinner(size: 16, color: Colors.white)
+                  : const Text(
+                      'Approve patch',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ),
         ],

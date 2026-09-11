@@ -229,10 +229,30 @@ class _PullRequestScreenState extends State<PullRequestScreen> {
   }
 }
 
-class _GithubConnectPrerequisite extends StatelessWidget {
+class _GithubConnectPrerequisite extends StatefulWidget {
   final Future<void> Function()? onConnectGithub;
 
   const _GithubConnectPrerequisite({this.onConnectGithub});
+
+  @override
+  State<_GithubConnectPrerequisite> createState() =>
+      _GithubConnectPrerequisiteState();
+}
+
+class _GithubConnectPrerequisiteState extends State<_GithubConnectPrerequisite> {
+  bool _connecting = false;
+
+  Future<void> _connect() async {
+    final onConnectGithub = widget.onConnectGithub;
+    if (onConnectGithub == null || _connecting) return;
+
+    setState(() => _connecting = true);
+    try {
+      await onConnectGithub();
+    } finally {
+      if (mounted) setState(() => _connecting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -256,14 +276,16 @@ class _GithubConnectPrerequisite extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: onConnectGithub == null
+            onPressed: widget.onConnectGithub == null || _connecting
                 ? null
-                : () => onConnectGithub!(),
+                : _connect,
             style: FilledButton.styleFrom(
               minimumSize: const Size(0, 46),
               padding: const EdgeInsets.symmetric(horizontal: 18),
             ),
-            child: const Text('Connect GitHub →'),
+            child: _connecting
+                ? const AppSpinner(size: 16, color: Colors.white)
+                : const Text('Connect GitHub →'),
           ),
         ),
       ],

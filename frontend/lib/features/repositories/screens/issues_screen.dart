@@ -267,8 +267,7 @@ class _IssuesScreenState extends State<IssuesScreen> {
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 14),
-                hintText:
-                    'Commit SHA or ref (optional)',
+                hintText: 'Commit SHA or ref (optional), Leave blank for main',
                 prefixIcon: Icon(
                   Icons.commit,
                   size: 15,

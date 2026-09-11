@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'package:patchpilot_web/services/analysis_cache.dart';
 import 'package:patchpilot_web/services/api_client.dart';
 import 'package:patchpilot_web/services/github_redirect.dart';
 import 'package:patchpilot_web/core/theme/app_theme.dart';
+import 'package:patchpilot_web/core/widgets/motion.dart';
 import 'package:patchpilot_web/features/repair/diagnosis/widgets/explanation_section.dart';
 import 'package:patchpilot_web/features/repair/diagnosis/widgets/follow_up.dart';
 import 'package:patchpilot_web/features/repair/diagnosis/widgets/relevant_files_section.dart';
@@ -1129,6 +1131,51 @@ void main() {
           ref: 'deadbeef',
         ),
       );
+    },
+  );
+
+  testWidgets(
+    'Pull Request Connect GitHub shows a spinner while connecting',
+    (tester) async {
+      final gate = Completer<void>();
+      final cache = AnalysisCache();
+      cache.save(
+        AnalysisCache.keyFor(
+          _demoRepo.owner,
+          _demoRepo.repo,
+          _issue.number,
+          ref: 'deadbeef',
+        ),
+        _completedAnalysis(),
+      );
+
+      await _pumpSessionWithApi(
+        tester,
+        cache,
+        _artifactApi(approved: true),
+        repository: _demoRepo,
+        ref: 'deadbeef',
+        onConnectGithub: ({analysisId, stage, repairPath}) => gate.future,
+      );
+
+      await tester.tap(find.text('Pull Request'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connect GitHub →'));
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: find.byType(PullRequestScreen),
+          matching: find.byType(AppSpinner),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Connect GitHub →'), findsNothing);
+
+      gate.complete();
+      await tester.pump();
+
+      expect(find.text('Connect GitHub →'), findsOneWidget);
     },
   );
 
